@@ -21,10 +21,9 @@ export function useRunSocket(
   const connect = useCallback(() => {
     if (!runId) return;
     const token = localStorage.getItem('cf_access');
-    const sock  = io('/', {
+    const sock  = io('/pipeline', {
       path: '/socket.io',
       transports: ['websocket', 'polling'],
-      namespace: '/pipeline',
       auth: { token },
     });
 

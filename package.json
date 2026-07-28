@@ -13,6 +13,8 @@
   "scripts": {
     "build": "npm run build --workspace @contentflow/shared && npm run build --workspace @contentflow/api",
     "dev": "npm run dev --workspace @contentflow/api",
+    "dev:web": "npm run dev --workspace @contentflow/web",
+    "dev:all": "npm run dev --workspace @contentflow/api & npm run dev --workspace @contentflow/web",
     "start": "npm run start:prod --workspace @contentflow/api",
     "worker": "npm run worker --workspace @contentflow/api",
     "test": "npm run test --workspace @contentflow/api",
