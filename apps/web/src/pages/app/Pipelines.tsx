@@ -42,9 +42,9 @@ function PipelineCard({ pipeline, onDelete, onRun }: {
         </button>
       </div>
       <div>
-        <Link to={`/app/pipelines/${pipeline.id}`} style={{ fontWeight:700, fontSize:'var(--text-lg)', display:'block', marginBottom:'var(--space-1)', color:'inherit' }}>
+        <div style={{ fontWeight:700, fontSize:'var(--text-lg)', marginBottom:'var(--space-1)', color:'var(--text-primary)' }}>
           {pipeline.name}
-        </Link>
+        </div>
         {pipeline.description && <div style={{ fontSize:'var(--text-sm)', color:'var(--text-secondary)' }}>{pipeline.description}</div>}
       </div>
       <div style={{ background:'var(--bg-elevated)', borderRadius:'var(--radius-sm)', padding:'var(--space-2) var(--space-3)', fontSize:'var(--text-xs)', color:'var(--text-secondary)', fontStyle:'italic' }}>
@@ -64,7 +64,6 @@ function PipelineCard({ pipeline, onDelete, onRun }: {
         >
           {running ? <><div className="spinner"/>Starting…</> : '▶ Run Pipeline'}
         </button>
-        <Link to={`/app/pipelines/${pipeline.id}`} className="btn btn-ghost">Config</Link>
       </div>
     </div>
   );

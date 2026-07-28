@@ -53,11 +53,9 @@ export default function Runs() {
             <tbody>
               {runs.map(r => (
                 <tr key={r.id}>
-                  <td className="font-mono text-xs" style={{ color:'var(--text-muted)' }}>{r.id.slice(0,10)}…</td>
+                  <td className="font-mono text-xs" style={{ color:'var(--text-muted)' }}>{r.id?.slice(0,10) ?? '—'}…</td>
                   <td style={{ fontWeight:500 }}>
-                    <Link to={`/app/pipelines/${r.pipelineId}`} style={{ color:'var(--text-primary)' }}>
-                      {r.pipeline?.name ?? r.pipelineId.slice(0,8)+'…'}
-                    </Link>
+                    {r.pipeline?.name ?? r.pipelineId?.slice(0,8) ?? 'Pipeline'}
                   </td>
                   <td><span className={`badge ${statusBadge(r.status)}`}>{r.status}</span></td>
                   <td className="text-sm" style={{ color:'var(--text-secondary)' }}>{fmtDuration(r.durationMs)}</td>

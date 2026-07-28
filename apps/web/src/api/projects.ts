@@ -1,7 +1,10 @@
 import { apiFetch } from './client';
 import type { Project } from './types';
 
-export const getProjects = () => apiFetch<Project[]>('/projects');
+export const getProjects = async (): Promise<Project[]> => {
+  const res = await apiFetch<Project[] | { items: Project[] }>('/projects');
+  return Array.isArray(res) ? res : (res?.items ?? []);
+};
 export const getProject  = (id: string) => apiFetch<Project>(`/projects/${id}`);
 export const createProject = (data: { name: string; description?: string }) =>
   apiFetch<Project>('/projects', { method: 'POST', body: JSON.stringify(data) });

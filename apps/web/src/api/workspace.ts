@@ -9,7 +9,10 @@ export const getNotifications = () => apiFetch<Notification[]>('/notifications')
 export const markRead         = (id: string) => apiFetch<void>(`/notifications/${id}/read`, { method: 'POST' });
 export const markAllRead      = () => apiFetch<void>('/notifications/read-all', { method: 'POST' });
 
-export const getBrandKits   = () => apiFetch<BrandKit[]>('/brand-kits');
+export const getBrandKits = async (): Promise<BrandKit[]> => {
+  const res = await apiFetch<BrandKit[] | { items: BrandKit[] }>('/brand-kits');
+  return Array.isArray(res) ? res : (res?.items ?? []);
+};
 export const createBrandKit = (data: Partial<BrandKit>) =>
   apiFetch<BrandKit>('/brand-kits', { method: 'POST', body: JSON.stringify(data) });
 export const setDefaultBrandKit = (id: string) =>
@@ -17,7 +20,10 @@ export const setDefaultBrandKit = (id: string) =>
 export const deleteBrandKit = (id: string) =>
   apiFetch<void>(`/brand-kits/${id}`, { method: 'DELETE' });
 
-export const getTemplates = () => apiFetch<Template[]>('/templates');
+export const getTemplates = async (): Promise<Template[]> => {
+  const res = await apiFetch<Template[] | { items: Template[] }>('/templates');
+  return Array.isArray(res) ? res : (res?.items ?? []);
+};
 export const getTemplate  = (slug: string) => apiFetch<Template>(`/templates/${slug}`);
 export const useTemplate  = (slug: string, projectId: string) =>
   apiFetch<Pipeline>(`/templates/${slug}/use`, {
@@ -25,7 +31,10 @@ export const useTemplate  = (slug: string, projectId: string) =>
     body: JSON.stringify({ projectId }),
   });
 
-export const getCampaigns   = () => apiFetch<Campaign[]>('/campaigns');
+export const getCampaigns = async (): Promise<Campaign[]> => {
+  const res = await apiFetch<Campaign[] | { items: Campaign[] }>('/campaigns');
+  return Array.isArray(res) ? res : (res?.items ?? []);
+};
 export const createCampaign = (data: Partial<Campaign>) =>
   apiFetch<Campaign>('/campaigns', { method: 'POST', body: JSON.stringify(data) });
 

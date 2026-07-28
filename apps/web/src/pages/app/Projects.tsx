@@ -25,7 +25,7 @@ function ProjectCard({ project, onDelete }: { project: Project; onDelete: () => 
   }
 
   return (
-    <Link to={`/app/projects/${project.id}`} className="card" style={{ padding:'var(--space-6)', display:'block', textDecoration:'none', position:'relative' }}>
+    <div className="card" style={{ padding:'var(--space-6)', display:'block', position:'relative' }}>
       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:'var(--space-3)' }}>
         <div style={{ width:40, height:40, borderRadius:'var(--radius-md)', background:'var(--primary-dim)', border:'1px solid rgba(124,107,255,0.3)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'1.25rem' }}>
           ▦
@@ -52,7 +52,7 @@ function ProjectCard({ project, onDelete }: { project: Project; onDelete: () => 
           {project._count?.assets ?? 0} assets
         </span>
       </div>
-    </Link>
+    </div>
   );
 }
 

@@ -1,8 +1,10 @@
 import { apiFetch } from './client';
 import type { Pipeline } from './types';
 
-export const getPipelines = (projectId?: string) =>
-  apiFetch<Pipeline[]>(projectId ? `/pipelines?projectId=${projectId}` : '/pipelines');
+export const getPipelines = async (projectId?: string): Promise<Pipeline[]> => {
+  const res = await apiFetch<Pipeline[] | { items: Pipeline[] }>(projectId ? `/pipelines?projectId=${projectId}` : '/pipelines');
+  return Array.isArray(res) ? res : (res?.items ?? []);
+};
 export const getPipeline  = (id: string) => apiFetch<Pipeline>(`/pipelines/${id}`);
 export const getAgents = () => apiFetch<string[]>('/pipelines/agents');
 export const createPipeline = (data: {
