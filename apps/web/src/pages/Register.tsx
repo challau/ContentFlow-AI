@@ -4,9 +4,13 @@ import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 
 export default function Register() {
-  const { register } = useAuth();
-  const { toast }    = useToast();
-  const navigate     = useNavigate();
+  const { user, register } = useAuth();
+  const { toast }          = useToast();
+  const navigate           = useNavigate();
+
+  if (user) {
+    navigate('/app/dashboard', { replace: true });
+  }
 
   const [name,     setName]     = useState('');
   const [email,    setEmail]    = useState('');
