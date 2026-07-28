@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react';
+import { useState, useEffect, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
@@ -8,10 +8,11 @@ export default function Login() {
   const { toast }       = useToast();
   const navigate        = useNavigate();
 
-  // If user is already logged in, redirect to app
-  if (user) {
-    navigate('/app/dashboard', { replace: true });
-  }
+  useEffect(() => {
+    if (user) {
+      navigate('/app/dashboard', { replace: true });
+    }
+  }, [user, navigate]);
 
   const [email,    setEmail]    = useState('');
   const [password, setPassword] = useState('');

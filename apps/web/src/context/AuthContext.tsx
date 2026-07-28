@@ -27,13 +27,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const login = useCallback(async (email: string, password: string) => {
-    const data = await apiLogin(email, password);
-    setUser(data.user);
+    await apiLogin(email, password);
+    const me = await getMe();
+    setUser(me);
   }, []);
 
   const register = useCallback(async (name: string, email: string, password: string) => {
-    const data = await apiRegister(name, email, password);
-    setUser(data.user);
+    await apiRegister(name, email, password);
+    const me = await getMe();
+    setUser(me);
   }, []);
 
   const logout = useCallback(async () => {
