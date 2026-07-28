@@ -1,10 +1,12 @@
 {
-  // Typecheck-only project: covers tests and the seed script, which the build
-  // config deliberately excludes.
+  // Typecheck/lint project: covers tests and the seed script, which the build
+  // config deliberately excludes. `exclude` must be re-stated, because an
+  // inherited exclude still wins over this file's `include`.
   "extends": "./tsconfig.json",
   "compilerOptions": {
     "noEmit": true,
     "rootDir": "./"
   },
-  "include": ["src/**/*", "test/**/*", "prisma/**/*"]
+  "include": ["src/**/*", "test/**/*", "prisma/**/*", "eslint.config.mjs"],
+  "exclude": ["node_modules", "dist", "coverage"]
 }

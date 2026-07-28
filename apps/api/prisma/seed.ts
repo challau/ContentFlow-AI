@@ -10,10 +10,23 @@ import { AGENT_KINDS, DEFAULT_AGENT_GRAPH } from '@contentflow/shared';
 
 const prisma = new PrismaClient();
 
-const DEMO_EMAIL = 'demo@contentflow.ai';
-const DEMO_PASSWORD = 'contentflow-demo-2026';
+const DEMO_EMAIL = process.env.SEED_DEMO_EMAIL ?? 'demo@contentflow.ai';
+
+/**
+ * The default is a well-known development credential and is published in this
+ * repository, so it must never reach a real deployment. Override it with
+ * SEED_DEMO_PASSWORD, and see the production guard in main().
+ */
+const DEMO_PASSWORD = process.env.SEED_DEMO_PASSWORD ?? 'contentflow-demo-2026';
 
 async function main(): Promise<void> {
+  if (process.env.NODE_ENV === 'production' && !process.env.SEED_DEMO_PASSWORD) {
+    throw new Error(
+      'Refusing to seed in production with the public default password. ' +
+        'Set SEED_DEMO_PASSWORD, or do not run the seed against production.',
+    );
+  }
+
   const passwordHash = await argon2.hash(DEMO_PASSWORD, { type: argon2.argon2id });
 
   const user = await prisma.user.upsert({
@@ -115,7 +128,6 @@ async function main(): Promise<void> {
     });
   }
 
-  // eslint-disable-next-line no-console
   console.log(
     [
       '',
@@ -131,7 +143,6 @@ async function main(): Promise<void> {
 
 main()
   .catch((error) => {
-    // eslint-disable-next-line no-console
     console.error(error);
     process.exit(1);
   })

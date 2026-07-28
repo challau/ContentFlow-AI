@@ -36,7 +36,6 @@ async function bootstrap(): Promise<void> {
 }
 
 bootstrap().catch((error) => {
-  // eslint-disable-next-line no-console
   console.error('Worker failed to start:', error);
   process.exit(1);
 });

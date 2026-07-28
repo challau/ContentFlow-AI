@@ -10,7 +10,7 @@ import {
 import { ApiBearerAuth, ApiOperation, ApiProperty, ApiPropertyOptional, ApiTags } from '@nestjs/swagger';
 import { Prisma } from '@prisma/client';
 import { IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
-import type { AgentKind, Platform } from '@contentflow/shared';
+import type { AgentKind } from '@contentflow/shared';
 import {
   CurrentUser,
   type AuthenticatedUser,

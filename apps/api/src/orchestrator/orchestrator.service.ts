@@ -14,7 +14,7 @@ import type { BrandContext } from '../ai/agents/agent.types';
 import { AssetMaterializerService } from './asset-materializer.service';
 import { PipelineEngineService } from './pipeline-engine.service';
 import { PipelineGateway } from './pipeline.gateway';
-import { buildGraph, topologicalLevels, validateGraph, type AgentGraph } from './dag';
+import { buildGraph, validateGraph, type AgentGraph } from './dag';
 
 export interface StartRunArgs {
   pipelineId: string;

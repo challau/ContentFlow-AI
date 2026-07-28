@@ -2,7 +2,29 @@ import type { Brief } from './brief';
 import { writeString } from './phrases';
 import { Rng } from './rng';
 
-type JsonSchema = Record<string, any>;
+/**
+ * The subset of JSON Schema the agent contracts actually emit. Typed narrowly
+ * rather than as `any` so a typo in a keyword is a compile error.
+ */
+interface JsonSchema {
+  type?: string | string[];
+  properties?: Record<string, JsonSchema>;
+  required?: string[];
+  items?: JsonSchema;
+  enum?: unknown[];
+  const?: unknown;
+  anyOf?: JsonSchema[];
+  oneOf?: JsonSchema[];
+  allOf?: JsonSchema[];
+  minItems?: number;
+  maxItems?: number;
+  minimum?: number;
+  maximum?: number;
+  exclusiveMinimum?: number;
+  exclusiveMaximum?: number;
+  maxLength?: number;
+  pattern?: string;
+}
 
 interface WalkOptions {
   brief: Brief;
@@ -31,16 +53,17 @@ export function generateFromSchema(schema: JsonSchema, opts: WalkOptions): unkno
   if (opts.depth > MAX_DEPTH) return null;
   if (!schema || typeof schema !== 'object') return null;
 
-  if (Array.isArray(schema.enum) && schema.enum.length > 0) {
+  const enumValues = schema.enum;
+  if (Array.isArray(enumValues) && enumValues.length > 0) {
     // Platform choices must reflect what the brief asked for, and cycle by
     // index so a list of platforms comes out varied instead of repeating.
     if (opts.key === 'platform' && opts.brief.platforms.length > 0) {
-      const allowed = opts.brief.platforms.filter((p) => schema.enum.includes(p));
+      const allowed = opts.brief.platforms.filter((p) => enumValues.includes(p));
       if (allowed.length > 0) {
         return allowed[opts.index % allowed.length];
       }
     }
-    return opts.rng.pick(schema.enum);
+    return opts.rng.pick(enumValues);
   }
   if (schema.const !== undefined) return schema.const;
 
@@ -144,7 +167,9 @@ function generateArray(schema: JsonSchema, opts: WalkOptions): unknown[] {
 function normalizePercentages(items: unknown[]): unknown[] {
   const records = items.filter(
     (i): i is Record<string, unknown> =>
-      typeof i === 'object' && i !== null && typeof (i as any).percentage === 'number',
+      typeof i === 'object' &&
+      i !== null &&
+      typeof (i as Record<string, unknown>).percentage === 'number',
   );
   if (records.length === 0 || records.length !== items.length) return items;
 

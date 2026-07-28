@@ -55,7 +55,6 @@ async function bootstrap(): Promise<void> {
 }
 
 bootstrap().catch((error) => {
-  // eslint-disable-next-line no-console
   console.error('Failed to start ContentFlow AI:', error);
   process.exit(1);
 });

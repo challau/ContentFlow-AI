@@ -1,0 +1,33 @@
+# Keep the build context small and never ship secrets or host build output.
+node_modules
+**/node_modules
+dist
+**/dist
+coverage
+**/coverage
+*.tsbuildinfo
+**/*.tsbuildinfo
+
+.env
+.env.*
+!.env.example
+
+.git
+.github
+.gitignore
+
+docs
+infra/k8s
+README.md
+*.md
+
+storage
+*.log
+.DS_Store
+.idea
+.vscode
+
+# Test and lint config are not needed in the runtime image.
+**/*.spec.ts
+jest*.config.js
+eslint.config.mjs

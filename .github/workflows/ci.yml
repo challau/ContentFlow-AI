@@ -67,6 +67,9 @@ jobs:
       - name: Typecheck
         run: npm run typecheck --workspaces --if-present
 
+      - name: Lint
+        run: npm run lint
+
       - name: Unit tests
         run: npm test --workspace @contentflow/api
 

@@ -5,15 +5,16 @@ services:
     image: postgres:17-alpine
     restart: unless-stopped
     environment:
-      POSTGRES_USER: contentflow
-      POSTGRES_PASSWORD: contentflow
-      POSTGRES_DB: contentflow
+      POSTGRES_USER: ${POSTGRES_USER:-contentflow}
+      # No default: a committed database password is a production footgun.
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-contentflow}
     ports:
       - '5432:5432'
     volumes:
       - postgres-data:/var/lib/postgresql/data
     healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U contentflow -d contentflow']
+      test: ['CMD-SHELL', 'pg_isready -U $${POSTGRES_USER:-contentflow} -d $${POSTGRES_DB:-contentflow}']
       interval: 5s
       timeout: 5s
       retries: 10
@@ -43,7 +44,7 @@ services:
     environment:
       NODE_ENV: production
       PORT: 4000
-      DATABASE_URL: postgresql://contentflow:contentflow@postgres:5432/contentflow?schema=public
+      DATABASE_URL: postgresql://${POSTGRES_USER:-contentflow}:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-contentflow}?schema=public
       REDIS_HOST: redis
       REDIS_PORT: 6379
       JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:?set JWT_ACCESS_SECRET}
@@ -71,7 +72,7 @@ services:
       api: { condition: service_started }
     environment:
       NODE_ENV: production
-      DATABASE_URL: postgresql://contentflow:contentflow@postgres:5432/contentflow?schema=public
+      DATABASE_URL: postgresql://${POSTGRES_USER:-contentflow}:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-contentflow}?schema=public
       REDIS_HOST: redis
       REDIS_PORT: 6379
       JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:?set JWT_ACCESS_SECRET}
