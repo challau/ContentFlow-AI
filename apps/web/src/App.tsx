@@ -13,6 +13,7 @@ import Pipelines from './pages/app/Pipelines';
 import Runs      from './pages/app/Runs';
 import RunDetail from './pages/app/RunDetail';
 import Assets    from './pages/app/Assets';
+import AssetDetail from './pages/app/AssetDetail';
 import BrandKits from './pages/app/BrandKits';
 import Templates from './pages/app/Templates';
 import Campaigns from './pages/app/Campaigns';
@@ -37,6 +38,7 @@ export default function App() {
               <Route path="runs"       element={<Runs />} />
               <Route path="runs/:id"   element={<RunDetail />} />
               <Route path="assets"     element={<Assets />} />
+              <Route path="assets/:id" element={<AssetDetail />} />
               <Route path="brand-kits" element={<BrandKits />} />
               <Route path="templates"  element={<Templates />} />
               <Route path="campaigns"  element={<Campaigns />} />
