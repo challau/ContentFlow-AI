@@ -1,0 +1,20 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    // rootDir is src so compiled output is dist/main.js, not dist/src/main.js.
+    // prisma/seed.ts is run through ts-node and is typechecked by tsconfig.check.json.
+    "rootDir": "src",
+    "outDir": "./dist",
+    // Keep build info inside outDir so `deleteOutDir` clears it. Left outside,
+    // a stale file silently skips emitting files after an outDir/rootDir change.
+    "tsBuildInfoFile": "./dist/.tsbuildinfo",
+    "baseUrl": "./",
+    // @contentflow/shared resolves through the workspace symlink to its built
+    // dist output, so it is not mapped here — build the shared package first.
+    "paths": {
+      "@/*": ["src/*"]
+    }
+  },
+  "include": ["src/**/*"],
+  "exclude": ["node_modules", "dist", "test", "src/**/*.spec.ts"]
+}

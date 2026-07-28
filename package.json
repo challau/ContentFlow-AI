@@ -1,0 +1,32 @@
+{
+  "name": "contentflow-ai",
+  "version": "1.0.0",
+  "private": true,
+  "description": "ContentFlow AI — One Topic. Every Platform. Powered by AI Agents.",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "scripts": {
+    "build": "npm run build --workspace @contentflow/shared && npm run build --workspace @contentflow/api",
+    "dev": "npm run dev --workspace @contentflow/api",
+    "start": "npm run start:prod --workspace @contentflow/api",
+    "worker": "npm run worker --workspace @contentflow/api",
+    "test": "npm run test --workspace @contentflow/api",
+    "test:e2e": "npm run test:e2e --workspace @contentflow/api",
+    "lint": "npm run lint --workspace @contentflow/api",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "db:generate": "npm run db:generate --workspace @contentflow/api",
+    "db:migrate": "npm run db:migrate --workspace @contentflow/api",
+    "db:push": "npm run db:push --workspace @contentflow/api",
+    "db:seed": "npm run db:seed --workspace @contentflow/api",
+    "db:studio": "npm run db:studio --workspace @contentflow/api",
+    "pipeline:run": "npm run pipeline:run --workspace @contentflow/api"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.3"
+  }
+}

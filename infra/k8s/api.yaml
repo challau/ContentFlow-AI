@@ -1,0 +1,142 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: contentflow-config
+data:
+  NODE_ENV: production
+  PORT: '4000'
+  API_PREFIX: api/v1
+  LLM_PROVIDER: anthropic
+  LLM_MODEL: claude-opus-5
+  PIPELINE_CONCURRENCY: '4'
+  AGENT_CONCURRENCY: '4'
+  LOG_LEVEL: info
+---
+# Secrets are placeholders — create them out of band, e.g.
+#   kubectl create secret generic contentflow-secrets \
+#     --from-literal=DATABASE_URL=... --from-literal=JWT_ACCESS_SECRET=...
+apiVersion: v1
+kind: Secret
+metadata:
+  name: contentflow-secrets
+type: Opaque
+stringData:
+  DATABASE_URL: postgresql://contentflow:change-me@postgres:5432/contentflow?schema=public
+  REDIS_HOST: redis
+  JWT_ACCESS_SECRET: change-me-access-secret-min-16-chars
+  JWT_REFRESH_SECRET: change-me-refresh-secret-min-16-chars
+  ANTHROPIC_API_KEY: ''
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: contentflow-api
+  labels: { app: contentflow, component: api }
+spec:
+  replicas: 3
+  selector:
+    matchLabels: { app: contentflow, component: api }
+  strategy:
+    type: RollingUpdate
+    rollingUpdate: { maxSurge: 1, maxUnavailable: 0 }
+  template:
+    metadata:
+      labels: { app: contentflow, component: api }
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1001
+      containers:
+        - name: api
+          image: contentflow/api:latest
+          imagePullPolicy: IfNotPresent
+          ports: [{ containerPort: 4000, name: http }]
+          env:
+            # API pods serve HTTP only; runs are consumed by worker pods.
+            - name: WORKER_ENABLED
+              value: 'false'
+          envFrom:
+            - configMapRef: { name: contentflow-config }
+            - secretRef: { name: contentflow-secrets }
+          resources:
+            requests: { cpu: 250m, memory: 512Mi }
+            limits: { cpu: '1', memory: 1Gi }
+          livenessProbe:
+            httpGet: { path: /api/v1/health, port: http }
+            initialDelaySeconds: 20
+            periodSeconds: 15
+          readinessProbe:
+            httpGet: { path: /api/v1/health/ready, port: http }
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: { drop: ['ALL'] }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: contentflow-worker
+  labels: { app: contentflow, component: worker }
+spec:
+  replicas: 2
+  selector:
+    matchLabels: { app: contentflow, component: worker }
+  template:
+    metadata:
+      labels: { app: contentflow, component: worker }
+    spec:
+      # Agent runs can take minutes; let in-flight work finish before eviction.
+      terminationGracePeriodSeconds: 300
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1001
+      containers:
+        - name: worker
+          image: contentflow/api:latest
+          command: ['node', 'apps/api/dist/worker.js']
+          envFrom:
+            - configMapRef: { name: contentflow-config }
+            - secretRef: { name: contentflow-secrets }
+          resources:
+            requests: { cpu: 500m, memory: 768Mi }
+            limits: { cpu: '2', memory: 2Gi }
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: { drop: ['ALL'] }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: contentflow-api
+spec:
+  selector: { app: contentflow, component: api }
+  ports: [{ port: 80, targetPort: http, name: http }]
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: contentflow-api
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: contentflow-api
+  minReplicas: 3
+  maxReplicas: 20
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target: { type: Utilization, averageUtilization: 70 }
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: contentflow-api
+spec:
+  minAvailable: 2
+  selector:
+    matchLabels: { app: contentflow, component: api }

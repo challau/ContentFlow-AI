@@ -1,0 +1,10 @@
+{
+  // Typecheck-only project: covers tests and the seed script, which the build
+  // config deliberately excludes.
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "rootDir": "./"
+  },
+  "include": ["src/**/*", "test/**/*", "prisma/**/*"]
+}

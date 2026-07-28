@@ -1,0 +1,723 @@
+// ContentFlow AI — data model
+// One Topic. Every Platform. Powered by AI Agents.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------------------------------------------------------------------------
+// Enums
+// ---------------------------------------------------------------------------
+
+enum SystemRole {
+  USER
+  ADMIN
+}
+
+enum OrgRole {
+  OWNER
+  ADMIN
+  EDITOR
+  VIEWER
+}
+
+enum PlanTier {
+  FREE
+  STARTER
+  PRO
+  ENTERPRISE
+}
+
+enum OAuthProvider {
+  GOOGLE
+  GITHUB
+}
+
+enum AgentKind {
+  RESEARCH
+  STRATEGY
+  PLANNER
+  COPYWRITING
+  SCRIPT
+  CAROUSEL
+  CREATIVE
+  VIDEO
+  SEO
+  PUBLISHING
+  ENGAGEMENT
+  ANALYTICS
+  FINAL_REVIEW
+}
+
+enum Platform {
+  INSTAGRAM
+  LINKEDIN
+  X
+  FACEBOOK
+  TIKTOK
+  YOUTUBE
+  BLOG
+  EMAIL
+  NEWSLETTER
+  PRODUCT_HUNT
+  REDDIT
+  WHATSAPP
+  TELEGRAM
+}
+
+enum SourceKind {
+  TOPIC
+  PRODUCT
+  STARTUP
+  PROJECT
+  YOUTUBE_VIDEO
+  BLOG
+  WEBSITE
+  PDF
+  GITHUB_REPO
+  RESEARCH_PAPER
+}
+
+enum RunStatus {
+  QUEUED
+  RUNNING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+enum ExecutionStatus {
+  PENDING
+  RUNNING
+  COMPLETED
+  FAILED
+  SKIPPED
+}
+
+enum AssetStatus {
+  DRAFT
+  IN_REVIEW
+  APPROVED
+  SCHEDULED
+  PUBLISHED
+  ARCHIVED
+}
+
+enum CampaignStatus {
+  DRAFT
+  ACTIVE
+  PAUSED
+  COMPLETED
+  ARCHIVED
+}
+
+enum ScheduleStatus {
+  PENDING
+  PUBLISHING
+  PUBLISHED
+  FAILED
+  CANCELLED
+}
+
+enum MediaKind {
+  IMAGE
+  VIDEO
+  PDF
+  AUDIO
+  DOCUMENT
+  LOGO
+}
+
+enum NotificationKind {
+  RUN_COMPLETED
+  RUN_FAILED
+  COMMENT_MENTION
+  SCHEDULE_PUBLISHED
+  CREDITS_LOW
+  TEAM_INVITE
+}
+
+enum CreditReason {
+  SIGNUP_GRANT
+  MONTHLY_GRANT
+  PIPELINE_RUN
+  AGENT_RERUN
+  MANUAL_ADJUSTMENT
+  PURCHASE
+}
+
+// ---------------------------------------------------------------------------
+// Identity & tenancy
+// ---------------------------------------------------------------------------
+
+model User {
+  id            String     @id @default(uuid())
+  email         String     @unique
+  passwordHash  String?
+  name          String
+  avatarUrl     String?
+  emailVerified Boolean    @default(false)
+  role          SystemRole @default(USER)
+  lastLoginAt   DateTime?
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+
+  oauthAccounts  OAuthAccount[]
+  refreshTokens  RefreshToken[]
+  memberships    Membership[]
+  teamMembers    TeamMember[]
+  projects       Project[]
+  pipelines      Pipeline[]
+  runs           PipelineRun[]
+  comments       Comment[]
+  notifications  Notification[]
+  auditLogs      AuditLog[]
+  mediaFiles     MediaFile[]
+  campaigns      Campaign[]
+
+  @@index([email])
+  @@map("users")
+}
+
+model OAuthAccount {
+  id                String        @id @default(uuid())
+  provider          OAuthProvider
+  providerAccountId String
+  accessToken       String?
+  refreshToken      String?
+  expiresAt         DateTime?
+  userId            String
+  user              User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt         DateTime      @default(now())
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+  @@map("oauth_accounts")
+}
+
+model RefreshToken {
+  id        String    @id @default(uuid())
+  tokenHash String    @unique
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  revokedAt DateTime?
+  userAgent String?
+  ip        String?
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
+  @@map("refresh_tokens")
+}
+
+model Organization {
+  id        String   @id @default(uuid())
+  name      String
+  slug      String   @unique
+  plan      PlanTier @default(FREE)
+  credits   Int      @default(1000)
+  logoUrl   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  memberships Membership[]
+  teams       Team[]
+  projects    Project[]
+  brandKits   BrandKit[]
+  mediaFiles  MediaFile[]
+  templates   Template[]
+  prompts     Prompt[]
+  agents      Agent[]
+  auditLogs   AuditLog[]
+  credits_tx  CreditTransaction[]
+
+  @@map("organizations")
+}
+
+model Membership {
+  id             String       @id @default(uuid())
+  role           OrgRole      @default(EDITOR)
+  userId         String
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdAt      DateTime     @default(now())
+
+  @@unique([userId, organizationId])
+  @@index([organizationId])
+  @@map("memberships")
+}
+
+model Team {
+  id             String       @id @default(uuid())
+  name           String
+  description    String?
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  members  TeamMember[]
+  projects Project[]
+
+  @@unique([organizationId, name])
+  @@map("teams")
+}
+
+model TeamMember {
+  id       String   @id @default(uuid())
+  teamId   String
+  team     Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  userId   String
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role     OrgRole  @default(EDITOR)
+  joinedAt DateTime @default(now())
+
+  @@unique([teamId, userId])
+  @@map("team_members")
+}
+
+// ---------------------------------------------------------------------------
+// Projects, pipelines & agents
+// ---------------------------------------------------------------------------
+
+model Project {
+  id             String       @id @default(uuid())
+  name           String
+  description    String?
+  sourceKind     SourceKind   @default(TOPIC)
+  sourceUrl      String?
+  topic          String
+  audience       String?
+  goal           String?
+  tone           String?
+  language       String       @default("English")
+  targetPlatforms Platform[]
+  archivedAt     DateTime?
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  teamId         String?
+  team           Team?        @relation(fields: [teamId], references: [id], onDelete: SetNull)
+  createdById    String
+  createdBy      User         @relation(fields: [createdById], references: [id])
+  brandKitId     String?
+  brandKit       BrandKit?    @relation(fields: [brandKitId], references: [id], onDelete: SetNull)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  pipelines Pipeline[]
+  runs      PipelineRun[]
+  assets    ContentAsset[]
+  campaigns Campaign[]
+  analytics AnalyticsRecord[]
+
+  @@index([organizationId])
+  @@index([createdById])
+  @@map("projects")
+}
+
+/// A saved agent workflow: `graph` holds the node/edge definition rendered by
+/// the visual builder and consumed by the orchestrator.
+model Pipeline {
+  id          String   @id @default(uuid())
+  name        String
+  description String?
+  graph       Json
+  isTemplate  Boolean  @default(false)
+  version     Int      @default(1)
+  projectId   String
+  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  createdById String
+  createdBy   User     @relation(fields: [createdById], references: [id])
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  runs PipelineRun[]
+
+  @@index([projectId])
+  @@map("pipelines")
+}
+
+/// Per-organization agent configuration overlaying the built-in defaults.
+model Agent {
+  id             String       @id @default(uuid())
+  kind           AgentKind
+  displayName    String
+  description    String
+  enabled        Boolean      @default(true)
+  model          String?
+  temperature    Float        @default(0.7)
+  maxTokens      Int          @default(4096)
+  systemPrompt   String?
+  config         Json?
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  executions AgentExecution[]
+  prompts    Prompt[]
+
+  @@unique([organizationId, kind])
+  @@map("agents")
+}
+
+model PipelineRun {
+  id          String    @id @default(uuid())
+  status      RunStatus @default(QUEUED)
+  input       Json
+  output      Json?
+  error       String?
+  progress    Int       @default(0)
+  totalAgents Int       @default(0)
+  tokensIn    Int       @default(0)
+  tokensOut   Int       @default(0)
+  costUsd     Decimal   @default(0) @db.Decimal(12, 6)
+  provider    String
+  model       String
+  startedAt   DateTime?
+  finishedAt  DateTime?
+  durationMs  Int?
+  jobId       String?
+  pipelineId  String
+  pipeline    Pipeline  @relation(fields: [pipelineId], references: [id], onDelete: Cascade)
+  projectId   String
+  project     Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  triggeredById String
+  triggeredBy   User    @relation(fields: [triggeredById], references: [id])
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  executions AgentExecution[]
+  assets     ContentAsset[]
+
+  @@index([projectId, status])
+  @@index([pipelineId])
+  @@map("pipeline_runs")
+}
+
+model AgentExecution {
+  id           String          @id @default(uuid())
+  agentKind    AgentKind
+  status       ExecutionStatus @default(PENDING)
+  attempt      Int             @default(0)
+  input        Json?
+  output       Json?
+  rawResponse  String?
+  error        String?
+  promptTokens Int             @default(0)
+  outputTokens Int             @default(0)
+  costUsd      Decimal         @default(0) @db.Decimal(12, 6)
+  model        String?
+  provider     String?
+  startedAt    DateTime?
+  finishedAt   DateTime?
+  durationMs   Int?
+  runId        String
+  run          PipelineRun     @relation(fields: [runId], references: [id], onDelete: Cascade)
+  agentId      String?
+  agent        Agent?          @relation(fields: [agentId], references: [id], onDelete: SetNull)
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+
+  @@unique([runId, agentKind])
+  @@index([runId, status])
+  @@map("agent_executions")
+}
+
+/// Versioned prompt templates. Only one version per (org, agent) is active.
+model Prompt {
+  id             String       @id @default(uuid())
+  name           String
+  agentKind      AgentKind
+  version        Int          @default(1)
+  isActive       Boolean      @default(true)
+  systemPrompt   String
+  userTemplate   String
+  variables      String[]
+  notes          String?
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  agentId        String?
+  agent          Agent?       @relation(fields: [agentId], references: [id], onDelete: SetNull)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@unique([organizationId, agentKind, version])
+  @@index([organizationId, agentKind, isActive])
+  @@map("prompts")
+}
+
+/// Reusable starting points (Product Launch, SaaS, Personal Branding, …).
+/// `organizationId` null means a built-in template visible to everyone.
+model Template {
+  id             String        @id @default(uuid())
+  slug           String        @unique
+  name           String
+  description    String
+  category       String
+  icon           String?
+  graph          Json
+  defaultInput   Json
+  platforms      Platform[]
+  isBuiltIn      Boolean       @default(false)
+  usageCount     Int           @default(0)
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  @@index([category])
+  @@map("templates")
+}
+
+// ---------------------------------------------------------------------------
+// Content, campaigns & scheduling
+// ---------------------------------------------------------------------------
+
+model Campaign {
+  id          String         @id @default(uuid())
+  name        String
+  description String?
+  status      CampaignStatus @default(DRAFT)
+  startsAt    DateTime?
+  endsAt      DateTime?
+  goal        String?
+  projectId   String
+  project     Project        @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  createdById String
+  createdBy   User           @relation(fields: [createdById], references: [id])
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  assets    ContentAsset[]
+  schedules Schedule[]
+  analytics AnalyticsRecord[]
+
+  @@index([projectId, status])
+  @@map("campaigns")
+}
+
+/// A single publish-ready deliverable produced by an agent.
+model ContentAsset {
+  id          String      @id @default(uuid())
+  slug        String
+  title       String
+  platform    Platform
+  format      String
+  status      AssetStatus @default(DRAFT)
+  body        String
+  bodyJson    Json?
+  metadata    Json?
+  hashtags    String[]
+  characterCount Int      @default(0)
+  version     Int         @default(1)
+  producedBy  AgentKind
+  projectId   String
+  project     Project     @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  runId       String?
+  run         PipelineRun? @relation(fields: [runId], references: [id], onDelete: SetNull)
+  campaignId  String?
+  campaign    Campaign?   @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  versions  ContentVersion[]
+  comments  Comment[]
+  schedules Schedule[]
+  analytics AnalyticsRecord[]
+  media     MediaFile[]
+
+  @@index([projectId, platform])
+  @@index([runId])
+  @@map("content_assets")
+}
+
+model ContentVersion {
+  id        String       @id @default(uuid())
+  version   Int
+  body      String
+  bodyJson  Json?
+  changeNote String?
+  authorId  String?
+  assetId   String
+  asset     ContentAsset @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  createdAt DateTime     @default(now())
+
+  @@unique([assetId, version])
+  @@map("content_versions")
+}
+
+model Schedule {
+  id           String         @id @default(uuid())
+  scheduledFor DateTime
+  timezone     String         @default("UTC")
+  status       ScheduleStatus @default(PENDING)
+  platform     Platform
+  publishedAt  DateTime?
+  externalId   String?
+  error        String?
+  assetId      String
+  asset        ContentAsset   @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  campaignId   String?
+  campaign     Campaign?      @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+
+  @@index([scheduledFor, status])
+  @@map("schedules")
+}
+
+// ---------------------------------------------------------------------------
+// Brand, media & collaboration
+// ---------------------------------------------------------------------------
+
+model BrandKit {
+  id                String       @id @default(uuid())
+  name              String
+  primaryColor      String       @default("#6366F1")
+  secondaryColor    String       @default("#8B5CF6")
+  accentColor       String       @default("#EC4899")
+  palette           Json?
+  headingFont       String       @default("Inter")
+  bodyFont          String       @default("Inter")
+  logoUrl           String?
+  toneOfVoice       String?
+  writingGuidelines String?
+  bannedWords       String[]
+  isDefault         Boolean      @default(false)
+  organizationId    String
+  organization      Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+
+  projects Project[]
+
+  @@index([organizationId])
+  @@map("brand_kits")
+}
+
+model MediaFile {
+  id             String        @id @default(uuid())
+  filename       String
+  kind           MediaKind
+  mimeType       String
+  sizeBytes      Int
+  storageKey     String
+  url            String
+  width          Int?
+  height         Int?
+  durationSec    Int?
+  checksum       String?
+  tags           String[]
+  organizationId String
+  organization   Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  uploadedById   String
+  uploadedBy     User          @relation(fields: [uploadedById], references: [id])
+  assetId        String?
+  asset          ContentAsset? @relation(fields: [assetId], references: [id], onDelete: SetNull)
+  createdAt      DateTime      @default(now())
+
+  @@index([organizationId, kind])
+  @@map("media_files")
+}
+
+model Comment {
+  id         String       @id @default(uuid())
+  body       String
+  resolved   Boolean      @default(false)
+  anchor     Json?
+  assetId    String
+  asset      ContentAsset @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  authorId   String
+  author     User         @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  parentId   String?
+  parent     Comment?     @relation("CommentThread", fields: [parentId], references: [id], onDelete: Cascade)
+  replies    Comment[]    @relation("CommentThread")
+  mentions   String[]
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
+
+  @@index([assetId])
+  @@map("comments")
+}
+
+// ---------------------------------------------------------------------------
+// Analytics, notifications & audit
+// ---------------------------------------------------------------------------
+
+model AnalyticsRecord {
+  id          String        @id @default(uuid())
+  metric      String
+  value       Decimal       @db.Decimal(18, 4)
+  unit        String?
+  platform    Platform?
+  dimension   String?
+  recordedFor DateTime
+  source      String        @default("prediction")
+  projectId   String
+  project     Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  assetId     String?
+  asset       ContentAsset? @relation(fields: [assetId], references: [id], onDelete: SetNull)
+  campaignId  String?
+  campaign    Campaign?     @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+  createdAt   DateTime      @default(now())
+
+  @@index([projectId, metric, recordedFor])
+  @@map("analytics_records")
+}
+
+model Notification {
+  id        String           @id @default(uuid())
+  kind      NotificationKind
+  title     String
+  body      String
+  readAt    DateTime?
+  link      String?
+  data      Json?
+  userId    String
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime         @default(now())
+
+  @@index([userId, readAt])
+  @@map("notifications")
+}
+
+model AuditLog {
+  id             String        @id @default(uuid())
+  action         String
+  entityType     String
+  entityId       String?
+  metadata       Json?
+  ip             String?
+  userAgent      String?
+  actorId        String?
+  actor          User?         @relation(fields: [actorId], references: [id], onDelete: SetNull)
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdAt      DateTime      @default(now())
+
+  @@index([organizationId, createdAt])
+  @@index([entityType, entityId])
+  @@map("audit_logs")
+}
+
+model CreditTransaction {
+  id             String       @id @default(uuid())
+  amount         Int
+  balanceAfter   Int
+  reason         CreditReason
+  description    String?
+  referenceId    String?
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdAt      DateTime     @default(now())
+
+  @@index([organizationId, createdAt])
+  @@map("credit_transactions")
+}

@@ -1,0 +1,102 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # CI runs against the deterministic offline provider so no API key is needed
+  # and results are reproducible.
+  LLM_PROVIDER: local
+  LLM_MODEL: claude-opus-5
+  JWT_ACCESS_SECRET: ci-access-secret-value-0123456789
+  JWT_REFRESH_SECRET: ci-refresh-secret-value-0123456789
+  DATABASE_URL: postgresql://contentflow:contentflow@localhost:5432/contentflow_test?schema=public
+  REDIS_HOST: 127.0.0.1
+  REDIS_PORT: 6379
+
+jobs:
+  verify:
+    name: Typecheck, lint and test
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: contentflow
+          POSTGRES_PASSWORD: contentflow
+          POSTGRES_DB: contentflow_test
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U contentflow"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+
+      redis:
+        image: redis:7-alpine
+        ports: ['6379:6379']
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s --health-timeout 3s --health-retries 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build shared package
+        run: npm run build --workspace @contentflow/shared
+
+      - name: Generate Prisma client
+        run: npx prisma generate --schema apps/api/prisma/schema.prisma
+
+      - name: Apply migrations
+        run: npx prisma migrate deploy --schema apps/api/prisma/schema.prisma
+
+      - name: Typecheck
+        run: npm run typecheck --workspaces --if-present
+
+      - name: Unit tests
+        run: npm test --workspace @contentflow/api
+
+      - name: End-to-end tests
+        run: npm run test:e2e --workspace @contentflow/api
+
+      - name: Build API
+        run: npm run build --workspace @contentflow/api
+
+      - name: Smoke-run the agent pipeline
+        run: |
+          npm run pipeline:run --workspace @contentflow/api -- \
+            --topic "CI verification of the ContentFlow agent pipeline" \
+            --platforms LINKEDIN,X
+
+  docker:
+    name: Build container image
+    runs-on: ubuntu-latest
+    needs: verify
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Build API image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: infra/docker/api.Dockerfile
+          push: false
+          tags: contentflow/api:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
