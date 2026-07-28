@@ -13,13 +13,15 @@ export default function Assets() {
   const [filter, setFilter] = useState('');
   const [typeFilter, setTypeFilter] = useState('');
 
-  const filtered = (assets ?? []).filter(a => {
-    const matchText  = !filter   || (a.title ?? a.slug ?? a.type).toLowerCase().includes(filter.toLowerCase());
-    const matchType  = !typeFilter || a.type === typeFilter;
+  const assetList = Array.isArray(assets) ? assets : [];
+
+  const filtered = assetList.filter(a => {
+    const matchText  = !filter || (a.title ?? a.slug ?? a.type ?? '').toLowerCase().includes(filter.toLowerCase());
+    const matchType  = !typeFilter || a.type === typeFilter || a.platform === typeFilter;
     return matchText && matchType;
   });
 
-  const types = [...new Set((assets ?? []).map(a => a.type))];
+  const types = [...new Set(assetList.flatMap(a => [a.type, a.platform]).filter(Boolean))] as string[];
 
   return (
     <div className="page">
@@ -71,7 +73,7 @@ export default function Assets() {
               </div>
               <div style={{ fontWeight:600, marginBottom:'var(--space-2)', fontSize:'var(--text-sm)' }}>{a.title ?? a.slug ?? a.type}</div>
               <div style={{ fontSize:'var(--text-xs)', color:'var(--text-secondary)', lineHeight:1.7, overflow:'hidden', display:'-webkit-box', WebkitLineClamp:3, WebkitBoxOrient:'vertical' }}>
-                {a.content.slice(0,180)}…
+                {((a.body || a.content || '') as string).slice(0,180)}…
               </div>
               <div style={{ marginTop:'var(--space-3)', fontSize:'var(--text-xs)', color:'var(--text-muted)' }}>
                 {new Date(a.createdAt).toLocaleDateString()}

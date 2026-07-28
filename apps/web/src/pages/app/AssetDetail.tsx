@@ -28,7 +28,8 @@ export default function AssetDetail() {
   useEffect(() => {
     if (initialAsset) {
       setAsset(initialAsset);
-      setContent(initialAsset.content || '');
+      const rawContent = initialAsset.body || initialAsset.content;
+      setContent(typeof rawContent === 'string' ? rawContent : JSON.stringify(rawContent ?? '', null, 2));
       setTitle(initialAsset.title || initialAsset.slug || initialAsset.type);
     }
   }, [initialAsset]);
@@ -37,7 +38,7 @@ export default function AssetDetail() {
     if (!id) return;
     setSaving(true);
     try {
-      const updated = await updateAsset(id, { title, content });
+      const updated = await updateAsset(id, { title, body: content } as Partial<Asset>);
       setAsset(updated);
       setEditing(false);
       toast('Asset updated successfully!', 'success');

@@ -68,6 +68,7 @@ export interface Asset {
   slug?: string;
   title?: string;
   content: string;
+  body?: string;
   version: number;
   runId: string;
   projectId: string;
