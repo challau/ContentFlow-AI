@@ -54,7 +54,7 @@ export async function apiFetch<T>(
 
   const res = await fetch(`${BASE}${path}`, { ...options, headers });
 
-  if (res.status === 401 && retry) {
+  if (res.status === 401 && retry && !path.startsWith('/auth/login') && !path.startsWith('/auth/register') && !path.startsWith('/auth/refresh')) {
     if (!refreshing) refreshing = doRefresh().finally(() => { refreshing = null; });
     const newToken = await refreshing;
     if (newToken) {
