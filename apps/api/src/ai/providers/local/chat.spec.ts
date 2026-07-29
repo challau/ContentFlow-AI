@@ -1,4 +1,4 @@
-import { splitSentences, synthesizeChat } from './chat';
+import { normalizeSubject, splitSentences, synthesizeChat } from './chat';
 
 const PARAGRAPH =
   'AI note taking saves clinicians time. It removes the after-hours documentation tail. ' +
@@ -95,14 +95,41 @@ describe('synthesizeChat', () => {
       expect(out).not.toMatch(/^6\. /m);
     });
 
-    it('mentions the user projects when supplied', () => {
+    it('ties ideas to the first project when supplied', () => {
       const out = synthesizeChat({
         action: 'ideas',
-        prompt: 'ideas',
+        prompt: 'ideas for onboarding emails',
         projectNames: ['Launch', 'Rebrand'],
         seed: 's',
       });
-      expect(out).toContain('Launch, Rebrand');
+      expect(out).toContain('Launch');
+    });
+
+    it('expands a platform alias and drops filler lead-ins', () => {
+      const out = synthesizeChat({ action: 'ideas', prompt: 'i want to start content in insta', seed: 's' });
+      expect(out).toContain('Instagram');
+      // The raw filler phrase must not be parroted back.
+      expect(out).not.toContain('i want to start content in insta');
+    });
+
+    it('gives platform-specific ideas when a platform is named', () => {
+      const out = synthesizeChat({ action: 'ideas', prompt: 'youtube ideas', seed: 's' });
+      expect(out).toMatch(/Content ideas for YouTube/);
+    });
+  });
+
+  describe('subject normalization', () => {
+    it.each([
+      ['i want to start content in insta', 'Instagram'],
+      ['how do i grow on youtube', 'YouTube'],
+      ['help me with posting on linkedin', 'LinkedIn'],
+      ['ideas for tiktok', 'TikTok'],
+    ])('cleans %j into %j', (input, expected) => {
+      expect(normalizeSubject(input)).toBe(expected);
+    });
+
+    it('falls back to the raw text when nothing strips', () => {
+      expect(normalizeSubject('quantum widgets')).toBe('quantum widgets');
     });
   });
 
@@ -116,7 +143,7 @@ describe('synthesizeChat', () => {
   });
 
   describe('chat', () => {
-    it('names the projects it can see', () => {
+    it('names the projects it can see for a non-content question', () => {
       const out = synthesizeChat({
         action: 'chat',
         prompt: 'what can you do?',
@@ -128,6 +155,11 @@ describe('synthesizeChat', () => {
     it('says so when there are no projects', () => {
       const out = synthesizeChat({ action: 'chat', prompt: 'hello', projectNames: [] });
       expect(out).toMatch(/no projects yet/i);
+    });
+
+    it('answers a content question with real ideas instead of deflecting', () => {
+      const out = synthesizeChat({ action: 'chat', prompt: 'how do i start on instagram?', projectNames: [] });
+      expect(out).toMatch(/Content ideas for Instagram/);
     });
   });
 

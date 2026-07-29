@@ -56,7 +56,7 @@ export function synthesizeChat(input: LocalChatInput): string {
       return withNote(ideas(input.prompt, input.projectNames, rng), 'x');
     case 'chat':
     default:
-      return conversational(input.prompt, input.projectNames);
+      return conversational(input.prompt, input.projectNames, rng);
   }
 }
 
@@ -130,22 +130,117 @@ function translateUnsupported(target?: string): string {
   );
 }
 
-function ideas(prompt: string, projectNames: string[] | undefined, rng: Rng): string {
-  const subject = prompt.replace(/^(give me |generate |some )?ideas?( for| about)?/i, '').trim() || 'your topic';
-  const frames = [
-    `A myth about ${subject} that costs people time`,
-    `What changed about ${subject} in the last year`,
-    `The smallest useful thing someone can do about ${subject} today`,
-    `A before/after built around ${subject}`,
-    `What people get wrong when they first meet ${subject}`,
-    `A teardown of one real example of ${subject}`,
+/** Common shorthand users type for platforms, mapped to their proper name. */
+const PLATFORM_ALIASES: Record<string, string> = {
+  insta: 'Instagram', ig: 'Instagram', instagram: 'Instagram',
+  fb: 'Facebook', facebook: 'Facebook',
+  yt: 'YouTube', youtube: 'YouTube',
+  li: 'LinkedIn', linkedin: 'LinkedIn',
+  twitter: 'X', x: 'X', tweet: 'X', tweets: 'X',
+  tiktok: 'TikTok', tik: 'TikTok',
+  reddit: 'Reddit', blog: 'a blog', newsletter: 'a newsletter',
+};
+
+/** Genuinely useful, beginner-oriented angles per platform. */
+const PLATFORM_IDEAS: Record<string, string[]> = {
+  Instagram: [
+    'Your first 9 grid posts: one theme shown nine different ways',
+    'Reels vs carousels — which format to lead with as a brand-new account',
+    'A 30-day posting cadence you can actually keep up',
+    '3 hooks that stop the scroll in the first second',
+    'Turn one idea into a carousel, a Reel, and a Story',
+    'A "before I knew this / after" post to build instant relatability',
+  ],
+  YouTube: [
+    'A 5-video starter series that answers your audience\'s top questions',
+    'Thumbnail + title pairs that earn the click without clickbait',
+    'Short vs long form — where a new channel should start',
+    'Turn one long video into 5 Shorts',
+    'A repeatable video structure: hook, promise, payoff, CTA',
+  ],
+  LinkedIn: [
+    'A "lesson I learned the hard way" post to open your first week',
+    'Document your work in public: one post per milestone',
+    'A contrarian take on your industry that invites comments',
+    'Turn a win into a step-by-step others can copy',
+    'A short story post — problem, turning point, takeaway',
+  ],
+  X: [
+    'A 5-tweet thread teaching one thing you know well',
+    'A single strong opinion, stated plainly, to spark replies',
+    'Build in public: share one small update a day for a week',
+    'Turn a long idea into a punchy 3-tweet thread',
+    'A useful list post people will bookmark',
+  ],
+  TikTok: [
+    'A 3-second hook + payoff format you can repeat daily',
+    'A "day in the life" that shows, not tells',
+    'Jump on one trending sound with your own spin',
+    'Answer the one question every beginner in your niche asks',
+    'A quick before/after or transformation clip',
+  ],
+};
+
+const GENERIC_IDEAS = (s: string): string[] => [
+  `A myth about ${s} that quietly costs people time`,
+  `The one thing you wish you'd known about ${s} on day one`,
+  `The smallest useful step someone can take on ${s} today`,
+  `A before/after built around ${s}`,
+  `A teardown of one real example of ${s}, good or bad`,
+  `The mistake almost everyone makes with ${s} — and the fix`,
+];
+
+/** Expands aliases, strips "I want to start content on…" style lead-ins. */
+export function normalizeSubject(raw: string): string {
+  let s = raw.trim();
+  for (const [alias, full] of Object.entries(PLATFORM_ALIASES)) {
+    s = s.replace(new RegExp(`\\b${alias}\\b`, 'gi'), full);
+  }
+  const strips = [
+    /^\s*i\s+(?:want|need|would\s+like|wanna)\s+to\s+/i,
+    /^\s*how\s+(?:do\s+i|to|can\s+i)\s+/i,
+    /^\s*(?:help\s+me\s+(?:with\s+)?|please\s+|can\s+you\s+|give\s+me\s+(?:some\s+)?|let'?s\s+)/i,
+    /^\s*(?:start(?:ing)?|create|creating|make|making|write|writing|build(?:ing)?|grow(?:ing)?|get(?:ting)?\s+into|do(?:ing)?)\s+/i,
+    /^\s*(?:content|posts?|posting|videos?|reels?)\s+(?:in|on|for|about|with|at)\s+/i,
+    /^\s*(?:ideas?|some\s+ideas?)\s+(?:for|about|on)?\s*/i,
+    /^\s*(?:in|on|for|about|with|at)\s+/i,
   ];
-  const picked = rng.sample(frames, 5);
-  const context = projectNames?.length ? `\n\nGrounded in your projects: ${projectNames.join(', ')}.` : '';
-  return `Angles for **${subject}**:\n\n${picked.map((f, i) => `${i + 1}. ${f}`).join('\n')}${context}`;
+  let prev;
+  do {
+    prev = s;
+    for (const re of strips) s = s.replace(re, '');
+    s = s.trim();
+  } while (s !== prev && s.length > 0);
+  return s.replace(/[.?!]+$/, '').trim() || raw.trim();
 }
 
-function conversational(prompt: string, projectNames?: string[]): string {
+function detectPlatform(text: string): string | null {
+  for (const [alias, full] of Object.entries(PLATFORM_ALIASES)) {
+    if (new RegExp(`\\b${alias}\\b`, 'i').test(text) && PLATFORM_IDEAS[full]) return full;
+  }
+  return null;
+}
+
+function ideas(prompt: string, projectNames: string[] | undefined, rng: Rng): string {
+  const platform = detectPlatform(prompt);
+  const subject = normalizeSubject(prompt) || 'your topic';
+  const bank = platform ? PLATFORM_IDEAS[platform] : GENERIC_IDEAS(subject);
+  const picked = rng.sample(bank, 5);
+  const heading = platform ? `Content ideas for ${platform}` : `Angles for **${subject}**`;
+  const context = projectNames?.length ? `\n\nTip: tie these to your project "${projectNames[0]}" for a consistent voice.` : '';
+  return `${heading}:\n\n${picked.map((f, i) => `${i + 1}. ${f}`).join('\n')}${context}`;
+}
+
+const CONTENT_ASK =
+  /\b(start|create|creating|grow|growing|post|posting|content|ideas?|write|writing|make|making|caption|hook|reels?|videos?|thread|insta|instagram|ig|youtube|yt|tiktok|linkedin|twitter|blog|newsletter)\b/i;
+
+function conversational(prompt: string, projectNames: string[] | undefined, rng: Rng): string {
+  // A plain-chat message that reads like a content request still deserves a
+  // useful answer, so route it through the same platform-aware idea bank
+  // rather than a canned deflection.
+  if (CONTENT_ASK.test(prompt)) {
+    return `${ideas(prompt, projectNames, rng)}\n\n${OFFLINE_NOTE}`;
+  }
   const known = projectNames?.length
     ? `I can see your projects: ${projectNames.join(', ')}.`
     : 'You have no projects yet — create one and I can work from its brief.';
@@ -153,7 +248,7 @@ function conversational(prompt: string, projectNames?: string[]): string {
     `${known}\n\n` +
     `You asked: "${truncate(prompt, 200)}"\n\n` +
     'In demo mode I can shorten, expand, rewrite and restructure content you paste in, ' +
-    'and suggest angles. Connect a full AI model for open-ended answers.'
+    'and suggest content angles. Connect a full AI model for open-ended answers.'
   );
 }
 
