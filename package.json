@@ -11,7 +11,7 @@
     "node": ">=20.0.0"
   },
   "scripts": {
-    "build": "npm run build --workspace @contentflow/shared && npm run build --workspace @contentflow/api && npm run build --workspace @contentflow/web",
+    "build": "npm run db:generate --workspace @contentflow/api && npm run build --workspace @contentflow/shared && npm run build --workspace @contentflow/api && npm run build --workspace @contentflow/web",
     "dev": "npm run dev --workspace @contentflow/api",
     "dev:web": "npm run dev --workspace @contentflow/web",
     "dev:all": "npm run dev --workspace @contentflow/api & npm run dev --workspace @contentflow/web",
