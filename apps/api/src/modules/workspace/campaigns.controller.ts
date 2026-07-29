@@ -20,6 +20,23 @@ import { Roles } from '../../common/decorators/public.decorator';
 import { PrismaService } from '../../prisma/prisma.service';
 
 const CAMPAIGN_STATUSES = ['DRAFT', 'ACTIVE', 'PAUSED', 'COMPLETED', 'ARCHIVED'] as const;
+const SCHEDULE_STATUSES = ['PENDING', 'PUBLISHING', 'PUBLISHED', 'FAILED', 'CANCELLED'] as const;
+
+/**
+ * A class, not an inline type: interfaces erase at runtime, so ValidationPipe
+ * has no metadata to check and unknown values reach Prisma as a 500.
+ */
+class UpdateScheduleDto {
+  @ApiPropertyOptional({ example: '2026-08-01T09:00:00.000Z' })
+  @IsOptional()
+  @IsDateString()
+  scheduledFor?: string;
+
+  @ApiPropertyOptional({ enum: SCHEDULE_STATUSES })
+  @IsOptional()
+  @IsIn(SCHEDULE_STATUSES)
+  status?: (typeof SCHEDULE_STATUSES)[number];
+}
 
 class CreateCampaignDto {
   @ApiProperty()
@@ -227,7 +244,7 @@ export class SchedulesController {
   async update(
     @CurrentUser() user: AuthenticatedUser,
     @Param('id', ParseUUIDPipe) id: string,
-    @Body() dto: { scheduledFor?: string; status?: ScheduleStatus },
+    @Body() dto: UpdateScheduleDto,
   ) {
     const schedule = await this.prisma.schedule.findFirst({
       where: { id, asset: { project: { organizationId: user.organizationId } } },
