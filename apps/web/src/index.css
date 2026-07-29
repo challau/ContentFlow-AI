@@ -84,6 +84,9 @@
 
   /* Layout */
   --sidebar-width: 240px;
+  /* Rail widths are duplicated in Sidebar.tsx, which animates them in JS. */
+  --rail-collapsed: 68px;
+  --rail-expanded: 232px;
   --topbar-height: 60px;
 }
 
@@ -357,9 +360,12 @@ textarea.form-input { min-height: 100px; resize: vertical; }
   min-height: 100vh;
 }
 
-/* ── Sidebar ── */
-.sidebar {
-  width: var(--sidebar-width);
+/* ── Navigation rail ──────────────────────────────────────────────
+   Slim icon rail that expands to icons + labels. Framer Motion owns the
+   width animation; CSS owns everything that does not need to be animated
+   in JS, so the two never fight over the same property. */
+.rail {
+  width: var(--rail-collapsed);
   background: var(--bg-surface);
   border-right: 1px solid var(--border);
   display: flex;
@@ -369,18 +375,25 @@ textarea.form-input { min-height: 100px; resize: vertical; }
   left: 0;
   height: 100vh;
   z-index: 100;
-  overflow-y: auto;
+  overflow: visible; /* tooltips must escape the rail */
+  box-shadow: var(--shadow-sm);
+  transition: width 300ms cubic-bezier(0.22, 1, 0.36, 1);
 }
-.sidebar-logo {
+.rail.is-expanded { width: var(--rail-expanded); }
+
+.rail-brand {
   display: flex;
   align-items: center;
   gap: var(--space-3);
-  padding: var(--space-5) var(--space-5);
+  height: var(--topbar-height);
+  padding: 0 var(--space-4);
   border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+  overflow: hidden;
 }
-.sidebar-logo-icon {
-  width: 32px;
-  height: 32px;
+.rail-brand-mark {
+  width: 34px;
+  height: 34px;
   background: var(--primary);
   border-radius: var(--radius-md);
   display: flex;
@@ -389,51 +402,197 @@ textarea.form-input { min-height: 100px; resize: vertical; }
   box-shadow: 0 0 12px var(--primary-glow);
   flex-shrink: 0;
 }
-.sidebar-logo-text {
+.rail-brand-text {
   font-size: var(--text-base);
   font-weight: 700;
+  white-space: nowrap;
   background: linear-gradient(135deg, #fff 0%, var(--primary) 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
 }
-.sidebar-nav { flex: 1; padding: var(--space-4) var(--space-3); display: flex; flex-direction: column; gap: var(--space-1); }
-.nav-section-label {
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--text-muted);
-  padding: var(--space-4) var(--space-3) var(--space-2);
+
+/* Deliberately not scrollable: `overflow-y: auto` would force overflow-x to
+   compute as auto too, clipping the tooltips that must escape the rail. Nine
+   items fit any supported viewport. */
+.rail-nav {
+  flex: 1;
+  padding: var(--space-4) var(--space-3);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  overflow: visible;
+  min-height: 0;
 }
-.nav-item {
+
+.rail-item {
+  position: relative;
   display: flex;
   align-items: center;
   gap: var(--space-3);
-  padding: var(--space-2) var(--space-3);
+  height: 42px;
+  padding: 0 var(--space-3);
   border-radius: var(--radius-md);
   color: var(--text-secondary);
   font-size: var(--text-sm);
   font-weight: 500;
-  transition: all var(--transition);
-  cursor: pointer;
+  white-space: nowrap;
+  transition: background var(--transition), color var(--transition);
 }
-.nav-item:hover { background: var(--bg-glass); color: var(--text-primary); }
-.nav-item.active {
+.rail-item:hover { background: var(--bg-glass); color: var(--text-primary); }
+.rail-item.is-active {
   background: var(--primary-dim);
   color: var(--primary);
-  border: 1px solid rgba(124,107,255,0.2);
+  box-shadow: inset 0 0 0 1px rgba(124, 107, 255, 0.22);
 }
-.nav-item-icon { width: 18px; height: 18px; flex-shrink: 0; opacity: 0.8; }
-.nav-item.active .nav-item-icon { opacity: 1; }
+/* Active marker reads at a glance even when labels are hidden. */
+.rail-item.is-active::before {
+  content: '';
+  position: absolute;
+  left: calc(var(--space-3) * -1);
+  top: 50%;
+  transform: translateY(-50%);
+  width: 3px;
+  height: 20px;
+  border-radius: 0 3px 3px 0;
+  background: var(--primary);
+}
+.rail-item-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  flex-shrink: 0;
+}
+.rail-item-label { overflow: hidden; }
 
-.sidebar-footer {
-  padding: var(--space-4) var(--space-3);
+/* Floating tooltip, shown only while collapsed. */
+.rail-tooltip {
+  position: absolute;
+  left: calc(100% + 12px);
+  top: 50%;
+  transform: translateY(-50%) translateX(-4px);
+  padding: 6px 10px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-strong);
+  box-shadow: var(--shadow-md);
+  color: var(--text-primary);
+  font-size: var(--text-xs);
+  font-weight: 500;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--transition), transform var(--transition);
+  z-index: 200;
+}
+.rail-item:hover .rail-tooltip,
+.rail-item:focus-visible .rail-tooltip {
+  opacity: 1;
+  transform: translateY(-50%) translateX(0);
+}
+
+.rail-footer {
+  padding: var(--space-3);
   border-top: 1px solid var(--border);
   display: flex;
   align-items: center;
   gap: var(--space-3);
+  flex-shrink: 0;
+  overflow: hidden;
 }
+.rail-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-full);
+  background: linear-gradient(135deg, var(--primary), var(--accent));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--text-xs);
+  font-weight: 700;
+  color: #fff;
+  flex-shrink: 0;
+}
+/* Avatar + logout side by side need ~100px; stack them in the 68px rail. */
+.rail:not(.is-expanded) .rail-footer {
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.rail-user { flex: 1; min-width: 0; }
+.rail-user-name { font-size: var(--text-sm); font-weight: 600; }
+.rail-user-email { font-size: var(--text-xs); color: var(--text-muted); }
+.rail-logout {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-md);
+  color: var(--text-secondary);
+  flex-shrink: 0;
+  transition: background var(--transition), color var(--transition);
+}
+.rail-logout:hover { background: var(--bg-glass); color: var(--error); }
+
+/* Mobile drawer — both layers stay mounted so the class toggle can transition,
+   and `visibility` keeps the closed drawer out of the tab order. */
+.rail-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(2px);
+  z-index: 150;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 210ms ease, visibility 210ms ease;
+}
+.rail-backdrop.is-open { opacity: 1; visibility: visible; }
+
+.rail-drawer {
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 100vh;
+  z-index: 200;
+  box-shadow: var(--shadow-lg);
+  transform: translateX(-100%);
+  visibility: hidden;
+  transition: transform 300ms cubic-bezier(0.22, 1, 0.36, 1), visibility 300ms;
+}
+.rail-drawer.is-open { transform: translateX(0); visibility: visible; }
+
+@media (prefers-reduced-motion: reduce) {
+  .rail,
+  .rail-drawer,
+  .rail-backdrop { transition: none; }
+}
+
+/* Hamburger / collapse control */
+.nav-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: var(--radius-md);
+  color: var(--text-secondary);
+  border: 1px solid var(--border);
+  background: var(--bg-glass);
+  margin-right: var(--space-4);
+  flex-shrink: 0;
+  transition: background var(--transition), color var(--transition), border-color var(--transition);
+}
+.nav-toggle:hover {
+  background: var(--bg-glass-hover);
+  border-color: var(--border-strong);
+  color: var(--text-primary);
+}
+/* One button, two glyphs — CSS picks which by shell state. */
+.nav-toggle-open { display: none; }
+.app-shell:not(.nav-expanded) .nav-toggle-close { display: none; }
+.app-shell:not(.nav-expanded) .nav-toggle-open { display: block; }
+
 .sidebar-avatar {
   width: 32px;
   height: 32px;
@@ -447,18 +606,20 @@ textarea.form-input { min-height: 100px; resize: vertical; }
   color: #fff;
   flex-shrink: 0;
 }
-.sidebar-user-info { flex: 1; min-width: 0; }
-.sidebar-user-name { font-size: var(--text-sm); font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.sidebar-user-email { font-size: var(--text-xs); color: var(--text-muted); }
 
-/* ── Main content ── */
+/* ── Main content ──
+   Mirrors the rail's animated width with the same 300ms curve, so the page
+   reclaims the space in step with the collapse rather than snapping. */
 .main-content {
-  margin-left: var(--sidebar-width);
+  margin-left: var(--rail-collapsed);
   flex: 1;
+  min-width: 0;
   min-height: 100vh;
   display: flex;
   flex-direction: column;
+  transition: margin-left 300ms cubic-bezier(0.22, 1, 0.36, 1);
 }
+.app-shell.nav-expanded .main-content { margin-left: var(--rail-expanded); }
 
 /* ── Topbar ── */
 .topbar {
@@ -1140,4 +1301,32 @@ tbody tr:hover { background: var(--bg-glass-hover); }
   .chat-layout { grid-template-columns: 1fr; }
   .chat-sidebar { max-height: 200px; }
   .chat-thread { height: 65vh; }
+}
+
+/* ── Navigation responsiveness ──
+   Tablet keeps the rail but starts collapsed (AppShell decides the default).
+   Mobile removes it from the flow entirely; it returns as a drawer. */
+@media (max-width: 768px) {
+  .main-content { margin-left: 0; }
+  .app-shell.nav-expanded .main-content { margin-left: 0; }
+  .topbar { padding: 0 var(--space-4); }
+  /* The drawer supplies its own rail, so the docked one must not show. */
+  .app-shell > .rail { display: none; }
+  /* Static inside the drawer, which owns the slide transform and position. */
+  .rail-drawer .rail {
+    display: flex;
+    position: relative;
+    height: 100%;
+    transition: none;
+  }
+  .rail-tooltip { display: none; }
+}
+
+/* Pointer-less devices never fire :hover, so the tooltip would stick open. */
+@media (hover: none) {
+  .rail-tooltip { display: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .main-content { transition: none; }
 }
