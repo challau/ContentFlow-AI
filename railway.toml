@@ -1,6 +1,11 @@
 [build]
-builder = "NIXPACKS"
-buildCommand = "npm ci && npm run build"
+# Railpack installs dependencies in an earlier layer and mounts a cache at
+# node_modules/.cache, so re-running `npm ci` here fails with EBUSY.
+buildCommand = "npm run build"
 
 [deploy]
-startCommand = "npm start"
+# Migrations run before the server accepts traffic, matching docker-compose.
+startCommand = "npx prisma migrate deploy --schema apps/api/prisma/schema.prisma && npm run start:prod --workspace @contentflow/api"
+healthcheckPath = "/api/v1/health"
+healthcheckTimeout = 120
+restartPolicyType = "ON_FAILURE"
