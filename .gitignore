@@ -13,3 +13,6 @@ storage/
 .DS_Store
 .idea/
 .vscode/
+
+# Local Redis persistence dump
+.redisdata/
