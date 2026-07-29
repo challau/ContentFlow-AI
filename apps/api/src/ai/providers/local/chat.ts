@@ -33,9 +33,9 @@ export interface LocalChatInput {
   seed?: string;
 }
 
-const OFFLINE_NOTE =
-  '_Offline mode: this reply was composed deterministically without a language model. ' +
-  'Set `ANTHROPIC_API_KEY` and `LLM_PROVIDER=anthropic` for real model responses._';
+// User-facing, so it names no internal config. The developer-facing wiring
+// ("set ANTHROPIC_API_KEY / LLM_PROVIDER=anthropic") lives in docs/API.md.
+const OFFLINE_NOTE = '_Demo mode · responses are basic. Connect a full AI model for richer output._';
 
 export function synthesizeChat(input: LocalChatInput): string {
   const rng = new Rng(input.seed ?? `${input.action}:${input.prompt}`);
@@ -125,9 +125,8 @@ function changeTone(text: string, tone?: string): string {
 
 function translateUnsupported(target?: string): string {
   return (
-    `I can't translate${target ? ` into ${target}` : ''} in offline mode — translation needs a real ` +
-    'language model, and emitting a fake translation would be worse than saying so.\n\n' +
-    'Set `ANTHROPIC_API_KEY` and `LLM_PROVIDER=anthropic`, then ask again.'
+    `Translation${target ? ` into ${target}` : ''} isn't available in demo mode. ` +
+    'Connect a full AI model to translate content accurately.'
   );
 }
 
@@ -153,9 +152,8 @@ function conversational(prompt: string, projectNames?: string[]): string {
   return (
     `${known}\n\n` +
     `You asked: "${truncate(prompt, 200)}"\n\n` +
-    'In offline mode I can still shorten, expand, rewrite and restructure content you paste in, ' +
-    'and suggest angles. Open-ended answers need a real model — set `ANTHROPIC_API_KEY` and ' +
-    '`LLM_PROVIDER=anthropic`.'
+    'In demo mode I can shorten, expand, rewrite and restructure content you paste in, ' +
+    'and suggest angles. Connect a full AI model for open-ended answers.'
   );
 }
 

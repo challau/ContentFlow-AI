@@ -78,10 +78,12 @@ describe('synthesizeChat', () => {
         content: PARAGRAPH,
         target: 'Spanish',
       });
-      expect(out).toMatch(/can't translate/i);
+      expect(out).toMatch(/isn't available in demo mode/i);
       expect(out).toContain('Spanish');
       // The original must not be echoed back as though it were translated.
       expect(out).not.toContain(PARAGRAPH);
+      // Internal config must never leak into user-facing copy.
+      expect(out).not.toMatch(/ANTHROPIC_API_KEY|LLM_PROVIDER/);
     });
   });
 
@@ -129,8 +131,16 @@ describe('synthesizeChat', () => {
     });
   });
 
-  it('labels transformed output as offline so it is never mistaken for a model', () => {
+  it('labels transformed output as demo so it is never mistaken for a model', () => {
     const out = synthesizeChat({ action: 'shorten', prompt: 'shorten', content: PARAGRAPH });
-    expect(out).toMatch(/offline mode/i);
+    expect(out).toMatch(/demo mode/i);
+  });
+
+  it('never leaks internal config names into any user-facing reply', () => {
+    const actions = ['chat', 'rewrite', 'expand', 'shorten', 'change_tone', 'translate', 'ideas'] as const;
+    for (const action of actions) {
+      const out = synthesizeChat({ action, prompt: 'go', content: PARAGRAPH, target: 'Spanish' });
+      expect(out).not.toMatch(/ANTHROPIC_API_KEY|LLM_PROVIDER|anthropic/);
+    }
   });
 });
