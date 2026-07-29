@@ -1,7 +1,6 @@
 // ── Base API client with auto-refresh ─────────────────────────────
 
-const BASE = '/api/v1';
-
+const BASE = import.meta.env.VITE_API_URL || '/api/v1';
 function getTokens() {
   return {
     access:  localStorage.getItem('cf_access'),

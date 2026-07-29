@@ -34,7 +34,8 @@ export function useRunSocket(
   const connect = useCallback(() => {
     if (!runId) return;
     const token = localStorage.getItem('cf_access');
-    const sock  = io('/pipeline', {
+    const baseUrl = import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL.replace('/api/v1', '') : '';
+    const sock  = io(`${baseUrl}/pipeline`, {
       path: '/socket.io',
       transports: ['websocket', 'polling'],
       auth: { token },
