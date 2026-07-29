@@ -7,6 +7,7 @@ const PAGE_TITLES: Record<string, string> = {
   '/app/pipelines':  'Pipelines',
   '/app/runs':       'Runs',
   '/app/assets':     'Assets',
+  '/app/chat':       'AI Assistant',
   '/app/brand-kits': 'Brand Kits',
   '/app/templates':  'Templates',
   '/app/campaigns':  'Campaigns',

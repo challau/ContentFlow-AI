@@ -7,6 +7,7 @@ const NAV = [
   { to: '/app/pipelines',  label: 'Pipelines',  icon: '⟳' },
   { to: '/app/runs',       label: 'Runs',        icon: '▶' },
   { to: '/app/assets',     label: 'Assets',      icon: '◉' },
+  { to: '/app/chat',       label: 'AI Assistant', icon: '💬' },
 ];
 
 const WORKSPACE_NAV = [

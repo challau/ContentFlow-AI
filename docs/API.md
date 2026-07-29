@@ -102,6 +102,43 @@ Returns `{ runId, agents, jobId?, mode }`. Queued is the default; `sync` is for 
 Built-in templates: `product-launch`, `startup-story`, `personal-branding`, `saas-growth`,
 `course-launch`, `hackathon`, `job-update`, `portfolio`, `case-study`.
 
+## AI chat assistant
+
+| Method | Path |
+| --- | --- |
+| POST | `/chat/conversations` — start a chat, optionally `{ projectId }` to ground it |
+| GET | `/chat/conversations?skip&take&includeArchived` |
+| GET | `/chat/conversations/:id` — conversation with full message history |
+| PATCH | `/chat/conversations/:id` — `{ title?, archived? }` |
+| DELETE | `/chat/conversations/:id` — cascades its messages |
+| POST | `/chat/conversations/:id/messages` — send a turn, returns both turns |
+
+`POST /chat/conversations/:id/messages` body:
+
+```json
+{
+  "content": "Make this punchier for LinkedIn.",
+  "action": "REWRITE",
+  "sourceContent": "…text to operate on…",
+  "assetId": "uuid",
+  "target": "professional"
+}
+```
+
+- `action` — one of `CHAT`, `REWRITE`, `EXPAND`, `SHORTEN`, `CHANGE_TONE`, `TRANSLATE`, `IDEAS`
+  (defaults to `CHAT`).
+- `sourceContent` or `assetId` supplies the text to act on. Every action except `CHAT`
+  and `IDEAS` requires one, else the request is a `400`. `assetId` is resolved against the
+  caller's organization and loads the asset body.
+- `target` sets the tone for `CHANGE_TONE` or the language for `TRANSLATE`.
+- The assistant is grounded in the caller's workspace: a conversation with a `projectId`
+  sees that project's brief, otherwise it sees the organization's recent project names.
+- Each message costs **1 credit**, charged only after a successful completion and recorded
+  on the ledger as `CHAT_MESSAGE`.
+- With `LLM_PROVIDER=local` replies are composed deterministically and labelled as offline.
+  Mechanical actions (shorten, expand, rewrite, tone, ideas) still work; translation
+  declines rather than emitting a fake translation.
+
 ## Dashboard and notifications
 
 | Method | Path |

@@ -1077,3 +1077,67 @@ tbody tr:hover { background: var(--bg-glass-hover); }
 .font-bold { font-weight: 700; }
 .text-sm { font-size: var(--text-sm); }
 .text-xs { font-size: var(--text-xs); }
+
+/* ── AI chat assistant ── */
+.chat-layout {
+  display: grid;
+  grid-template-columns: 260px 1fr;
+  gap: var(--space-6);
+  align-items: start;
+}
+.chat-sidebar {
+  padding: var(--space-2);
+  max-height: 70vh;
+  overflow-y: auto;
+}
+.chat-conversation {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: background var(--transition);
+}
+.chat-conversation:hover { background: var(--bg-glass); }
+.chat-conversation.is-active {
+  background: var(--primary-dim);
+  border: 1px solid var(--primary);
+}
+.chat-conversation-title {
+  font-size: var(--text-sm);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.chat-thread {
+  display: flex;
+  flex-direction: column;
+  height: 70vh;
+  padding: 0;
+}
+.chat-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--space-6);
+}
+.chat-composer {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border-top: 1px solid var(--border);
+}
+.chat-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+/* The conversation list stacks above the thread on narrow screens. */
+@media (max-width: 900px) {
+  .chat-layout { grid-template-columns: 1fr; }
+  .chat-sidebar { max-height: 200px; }
+  .chat-thread { height: 65vh; }
+}

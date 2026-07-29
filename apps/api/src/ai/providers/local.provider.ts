@@ -2,6 +2,7 @@ import type { LlmProvider } from '@contentflow/shared';
 import { deriveBrief } from './local/brief';
 import { generateForSchema } from './local/schema-generator';
 import { hashString } from './local/rng';
+import { synthesizeChat, type ChatAction } from './local/chat';
 import {
   FatalLlmError,
   type LlmCompletionRequest,
@@ -26,6 +27,12 @@ export class LocalProvider implements LlmProviderAdapter {
   }
 
   async complete(request: LlmCompletionRequest): Promise<LlmCompletionResponse> {
+    // Chat is free-form by nature, so it has no schema to satisfy; it gets a
+    // deterministic composer instead of the schema generator.
+    if (!request.jsonSchema && request.intent?.startsWith('chat')) {
+      return this.completeChat(request);
+    }
+
     if (!request.jsonSchema) {
       throw new FatalLlmError(
         'The local provider only serves schema-constrained agent calls',
@@ -62,6 +69,34 @@ export class LocalProvider implements LlmProviderAdapter {
     };
   }
 
+  private completeChat(request: LlmCompletionRequest): LlmCompletionResponse {
+    const last = [...request.messages].reverse().find((m) => m.role === 'user');
+    const action = (request.intent?.split(':')[1] ?? 'chat') as ChatAction;
+
+    const text = synthesizeChat({
+      action,
+      prompt: last?.content ?? '',
+      content: extractTagged(request, 'content') ?? undefined,
+      target: extractTagged(request, 'target') ?? undefined,
+      projectNames: extractList(request, 'projects'),
+      seed: `${request.intent}:${last?.content ?? ''}`,
+    });
+
+    const promptChars =
+      request.system.length + request.messages.reduce((n, m) => n + m.content.length, 0);
+
+    return {
+      text,
+      usage: {
+        promptTokens: Math.ceil(promptChars / 4),
+        outputTokens: Math.ceil(text.length / 4),
+      },
+      model: `local-deterministic-${hashString(request.intent ?? 'chat') % 1000}`,
+      provider: 'local',
+      stopReason: 'end_turn',
+    };
+  }
+
   estimateCostUsd(_model: string, _usage: LlmUsage): number {
     return 0;
   }
@@ -78,6 +113,17 @@ function extractTagged(request: LlmCompletionRequest, tag: string): string | und
   const value = match?.[1]?.trim();
   if (!value || /^not specified/i.test(value)) return undefined;
   return value;
+}
+
+/** Reads a comma-separated tagged list, e.g. `<projects>a, b</projects>`. */
+function extractList(request: LlmCompletionRequest, tag: string): string[] {
+  const raw = extractTagged(request, tag);
+  return raw
+    ? raw
+        .split(',')
+        .map((v) => v.trim())
+        .filter(Boolean)
+    : [];
 }
 
 /** Reads the platforms the brief actually asked for, if any. */

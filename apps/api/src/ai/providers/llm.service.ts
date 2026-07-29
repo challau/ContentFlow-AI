@@ -13,6 +13,7 @@ import {
   RetryableLlmError,
   type LlmCompletionRequest,
   type LlmCompletionResponse,
+  type LlmMessage,
   type LlmProviderAdapter,
 } from './provider.interface';
 
@@ -26,6 +27,27 @@ export interface StructuredCallOptions<T> {
   maxTokens?: number;
   temperature?: number;
   signal?: AbortSignal;
+}
+
+export interface TextCallOptions {
+  system: string;
+  /** Full conversation history, oldest first. */
+  messages: LlmMessage[];
+  /** Namespaced as `chat:<action>` so the offline provider can route it. */
+  intent: string;
+  model?: string;
+  maxTokens?: number;
+  temperature?: number;
+  signal?: AbortSignal;
+}
+
+export interface TextCallResult {
+  text: string;
+  provider: LlmProvider;
+  model: string;
+  promptTokens: number;
+  outputTokens: number;
+  costUsd: number;
 }
 
 export interface StructuredCallResult<T> {
@@ -96,6 +118,63 @@ export class LlmService {
 
   isLive(): boolean {
     return this.defaultProvider !== 'local';
+  }
+
+  /**
+   * Runs a free-form, multi-turn completion for the chat assistant.
+   *
+   * Unlike completeStructured there is no schema to repair against, so a
+   * transient failure is retried verbatim with backoff and nothing else.
+   */
+  async completeText(options: TextCallOptions): Promise<TextCallResult> {
+    const provider = this.adapters.get(this.defaultProvider);
+    if (!provider) {
+      throw new FatalLlmError(`Unknown provider ${this.defaultProvider}`, this.defaultProvider);
+    }
+
+    const maxRetries = this.config.get('LLM_MAX_RETRIES', { infer: true });
+    const request: LlmCompletionRequest = {
+      system: options.system,
+      messages: options.messages,
+      model: options.model ?? this.config.get('LLM_MODEL', { infer: true }),
+      maxTokens: options.maxTokens ?? this.config.get('LLM_MAX_TOKENS', { infer: true }),
+      temperature: options.temperature ?? this.config.get('LLM_TEMPERATURE', { infer: true }),
+      intent: options.intent,
+      signal: options.signal,
+    };
+
+    let lastError: unknown;
+
+    for (let attempt = 1; attempt <= maxRetries + 1; attempt++) {
+      try {
+        const response = await provider.complete(request);
+        return {
+          text: response.text,
+          provider: response.provider,
+          model: response.model,
+          promptTokens: response.usage.promptTokens,
+          outputTokens: response.usage.outputTokens,
+          costUsd: provider.estimateCostUsd(response.model, response.usage),
+        };
+      } catch (error) {
+        lastError = error;
+        if (error instanceof FatalLlmError) throw error;
+        this.logger.warn(
+          `[${options.intent}] attempt ${attempt} failed: ${(error as Error).message}`,
+        );
+        if (attempt <= maxRetries) {
+          await sleep(Math.min(2 ** attempt * 250, 8000) + Math.random() * 250);
+        }
+      }
+    }
+
+    throw new RetryableLlmError(
+      `[${options.intent}] exhausted ${maxRetries + 1} attempts: ${
+        lastError instanceof Error ? lastError.message : String(lastError)
+      }`,
+      this.defaultProvider,
+      lastError,
+    );
   }
 
   /**

@@ -13,6 +13,7 @@ import { PipelinesModule } from './modules/pipelines/pipelines.module';
 import { RunsModule } from './modules/runs/runs.module';
 import { AssetsModule } from './modules/assets/assets.module';
 import { WorkspaceModule } from './modules/workspace/workspace.module';
+import { ChatModule } from './modules/chat/chat.module';
 import { HealthModule } from './modules/health/health.module';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 import { JwtAuthGuard, RolesGuard } from './common/guards/jwt-auth.guard';
@@ -38,6 +39,7 @@ import { JwtAuthGuard, RolesGuard } from './common/guards/jwt-auth.guard';
     RunsModule,
     AssetsModule,
     WorkspaceModule,
+    ChatModule,
     HealthModule,
   ],
   providers: [
