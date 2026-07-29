@@ -53,7 +53,12 @@ export interface Run {
   status: 'pending' | 'running' | 'completed' | 'failed' | 'cancelled';
   pipelineId: string;
   pipeline?: Pipeline;
-  creditsUsed: number;
+  /** List endpoints join the project; only the detail endpoint joins the pipeline. */
+  project?: { id: string; name: string; topic?: string };
+  /** Dollar cost reported by the provider. Credits are billed per run on the org ledger. */
+  costUsd: number;
+  progress?: number;
+  totalAgents?: number;
   startedAt?: string;
   finishedAt?: string;
   durationMs?: number;
@@ -106,12 +111,14 @@ export interface Campaign {
   createdAt: string;
 }
 
+/** Flattened view of `GET /dashboard` — see normalizeDashboard. */
 export interface DashboardStats {
   totalRuns: number;
   completedRuns: number;
+  totalProjects: number;
   totalAssets: number;
-  creditsUsed: number;
   creditsRemaining: number;
+  costUsd: number;
   recentRuns: Run[];
   runsByStatus: Record<string, number>;
 }

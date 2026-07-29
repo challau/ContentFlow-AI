@@ -79,6 +79,10 @@ jobs:
       - name: Build API
         run: npm run build --workspace @contentflow/api
 
+      # Typechecks the SPA too — `vite build` runs tsc first.
+      - name: Build web
+        run: npm run build --workspace @contentflow/web
+
       - name: Smoke-run the agent pipeline
         run: |
           npm run pipeline:run --workspace @contentflow/api -- \

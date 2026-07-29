@@ -6,16 +6,22 @@ import { useToast } from '../../context/ToastContext';
 import { getRun, cancelRun, rerunAgent } from '../../api/runs';
 import type { AgentExecution, Run } from '../../api/types';
 
+// Must match the API's AgentKind enum exactly — executions are keyed by it.
 const AGENT_ORDER = [
-  'RESEARCH','STRATEGY','CONTENT_PLANNER','COPYWRITING','SCRIPT',
-  'CAROUSEL','CREATIVE_DESIGN','VIDEO_PRODUCTION','SEO',
+  'RESEARCH','STRATEGY','PLANNER','COPYWRITING','SCRIPT',
+  'CAROUSEL','CREATIVE','VIDEO','SEO',
   'PUBLISHING','ENGAGEMENT','ANALYTICS','FINAL_REVIEW',
 ];
 
 const AGENT_ICONS: Record<string, string> = {
-  RESEARCH:'🔍', STRATEGY:'♟', CONTENT_PLANNER:'📋', COPYWRITING:'✍️',
-  SCRIPT:'🎬', CAROUSEL:'🖼', CREATIVE_DESIGN:'🎨', VIDEO_PRODUCTION:'🎥',
+  RESEARCH:'🔍', STRATEGY:'♟', PLANNER:'📋', COPYWRITING:'✍️',
+  SCRIPT:'🎬', CAROUSEL:'🖼', CREATIVE:'🎨', VIDEO:'🎥',
   SEO:'📈', PUBLISHING:'📅', ENGAGEMENT:'💬', ANALYTICS:'📊', FINAL_REVIEW:'✅',
+};
+
+const AGENT_LABELS: Record<string, string> = {
+  PLANNER:'Content Planner', CREATIVE:'Creative Design', VIDEO:'Video Production',
+  SEO:'SEO', FINAL_REVIEW:'Final Review',
 };
 
 function statusBadgeClass(s: string) {
@@ -82,7 +88,9 @@ export default function RunDetail() {
     if (event.execution) {
       setExecs(prev => {
         const next = new Map(prev);
-        next.set(event.execution!.agentName, event.execution!);
+        // Socket updates are partial — keep any output already fetched.
+        const merged = { ...next.get(event.execution!.agentName), ...event.execution! };
+        next.set(event.execution!.agentName, merged);
         return next;
       });
       if (event.execution.status === 'running') setSelected(event.execution.agentName);
@@ -167,7 +175,7 @@ export default function RunDetail() {
       {/* Meta */}
       <div style={{ display:'flex', gap:'var(--space-4)', marginBottom:'var(--space-6)', flexWrap:'wrap' }}>
         <div className="badge badge-muted">Pipeline: {run.pipeline?.name ?? run.pipelineId.slice(0,8)}</div>
-        <div className="badge badge-muted">Credits: {run.creditsUsed}</div>
+        <div className="badge badge-muted">Cost: ${(run.costUsd ?? 0).toFixed(4)}</div>
         {run.durationMs && <div className="badge badge-muted">Duration: {fmtDuration(run.durationMs)}</div>}
         <div className="badge badge-muted">Started: {fmtDate(run.startedAt)}</div>
       </div>
@@ -190,7 +198,7 @@ export default function RunDetail() {
                     <div style={{ display:'flex', alignItems:'center', gap:'var(--space-3)' }}>
                       <div className={`agent-status-dot ${status}`} />
                       <span style={{ fontSize:'1rem' }}>{AGENT_ICONS[agentName] ?? '🤖'}</span>
-                      <span className="agent-item-name">{agentName.replace(/_/g,' ')}</span>
+                      <span className="agent-item-name">{AGENT_LABELS[agentName] ?? agentName.replace(/_/g,' ')}</span>
                     </div>
                     <div style={{ display:'flex', alignItems:'center', gap:'var(--space-2)' }}>
                       <span className={`badge ${statusBadgeClass(status)}`}>{statusLabel(status)}</span>
@@ -216,7 +224,7 @@ export default function RunDetail() {
         <div className="output-panel">
           <div className="output-panel-header">
             {selected
-              ? `${AGENT_ICONS[selected] ?? ''} ${selected.replace(/_/g,' ')} Output`
+              ? `${AGENT_ICONS[selected] ?? ''} ${AGENT_LABELS[selected] ?? selected.replace(/_/g,' ')} Output`
               : 'Select an agent to view output'}
           </div>
           <div className="output-panel-body">
@@ -227,7 +235,7 @@ export default function RunDetail() {
             )}
             {selected && !selectedExec && (
               <p style={{ color:'var(--text-muted)', fontSize:'var(--text-sm)', textAlign:'center', paddingTop:'var(--space-8)' }}>
-                Waiting for {selected.replace(/_/g,' ')}…
+                Waiting for {AGENT_LABELS[selected] ?? selected.replace(/_/g,' ')}…
               </p>
             )}
             {selectedExec?.status === 'running' && (

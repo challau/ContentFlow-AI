@@ -52,7 +52,10 @@ export default function Dashboard() {
     );
   }
 
-  const stats = data ?? { totalRuns:0, completedRuns:0, totalAssets:0, creditsUsed:0, creditsRemaining:0, recentRuns:[] };
+  const stats = data ?? {
+    totalRuns:0, completedRuns:0, totalProjects:0, totalAssets:0,
+    creditsRemaining:0, costUsd:0, recentRuns:[], runsByStatus:{},
+  };
 
   return (
     <div className="page">
@@ -84,7 +87,7 @@ export default function Dashboard() {
           <div className="stat-icon">⚡</div>
           <div className="stat-value">{stats.creditsRemaining ?? (user?.credits ?? 0)}</div>
           <div className="stat-label">Credits Remaining</div>
-          <div className="stat-change" style={{ color:'var(--warning)' }}>{stats.creditsUsed} used</div>
+          <div className="stat-change" style={{ color:'var(--warning)' }}>${stats.costUsd.toFixed(4)} spent</div>
         </div>
         <div className="stat-card">
           <div className="stat-icon">✅</div>
@@ -155,10 +158,10 @@ export default function Dashboard() {
               <thead>
                 <tr>
                   <th>Run ID</th>
-                  <th>Pipeline</th>
+                  <th>Project</th>
                   <th>Status</th>
                   <th>Duration</th>
-                  <th>Credits</th>
+                  <th>Cost</th>
                   <th>Date</th>
                   <th></th>
                 </tr>
@@ -167,10 +170,10 @@ export default function Dashboard() {
                 {stats.recentRuns.map(r => (
                   <tr key={r.id}>
                     <td className="font-mono text-xs" style={{ color:'var(--text-muted)' }}>{r.id.slice(0,8)}…</td>
-                    <td style={{ fontWeight:500 }}>{r.pipeline?.name ?? '—'}</td>
+                    <td style={{ fontWeight:500 }}>{r.project?.name ?? r.pipeline?.name ?? '—'}</td>
                     <td><span className={`badge ${statusBadge(r.status)}`}>{r.status}</span></td>
                     <td className="text-sm" style={{ color:'var(--text-secondary)' }}>{fmtDuration(r.durationMs)}</td>
-                    <td className="text-sm">{r.creditsUsed}</td>
+                    <td className="text-sm">${(r.costUsd ?? 0).toFixed(4)}</td>
                     <td className="text-sm" style={{ color:'var(--text-muted)' }}>{fmtDate(r.createdAt)}</td>
                     <td>
                       <Link to={`/app/runs/${r.id}`} className="btn btn-ghost btn-sm">View →</Link>

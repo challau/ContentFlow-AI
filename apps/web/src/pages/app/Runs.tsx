@@ -42,10 +42,10 @@ export default function Runs() {
             <thead>
               <tr>
                 <th>Run ID</th>
-                <th>Pipeline</th>
+                <th>Project</th>
                 <th>Status</th>
                 <th>Duration</th>
-                <th>Credits</th>
+                <th>Cost</th>
                 <th>Started</th>
                 <th></th>
               </tr>
@@ -55,13 +55,13 @@ export default function Runs() {
                 <tr key={r.id}>
                   <td className="font-mono text-xs" style={{ color:'var(--text-muted)' }}>{r.id?.slice(0,10) ?? '—'}…</td>
                   <td style={{ fontWeight:500 }}>
-                    {r.pipeline?.name ?? r.pipelineId?.slice(0,8) ?? 'Pipeline'}
+                    {r.project?.name ?? r.pipeline?.name ?? r.pipelineId?.slice(0,8) ?? 'Pipeline'}
                   </td>
                   <td><span className={`badge ${statusBadge(r.status)}`}>{r.status}</span></td>
                   <td className="text-sm" style={{ color:'var(--text-secondary)' }}>{fmtDuration(r.durationMs)}</td>
-                  <td className="text-sm">{r.creditsUsed}</td>
+                  <td className="text-sm">${(r.costUsd ?? 0).toFixed(4)}</td>
                   <td className="text-sm" style={{ color:'var(--text-muted)' }}>
-                    {r.startedAt ? new Date(r.startedAt).toLocaleString() : '—'}
+                    {r.startedAt || r.createdAt ? new Date(r.startedAt ?? r.createdAt).toLocaleString() : '—'}
                   </td>
                   <td>
                     <Link to={`/app/runs/${r.id}`} className="btn btn-ghost btn-sm">

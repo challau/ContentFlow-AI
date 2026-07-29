@@ -3,6 +3,7 @@ import { AiModule } from '../ai/ai.module';
 import { AssetMaterializerService } from './asset-materializer.service';
 import { OrchestratorService } from './orchestrator.service';
 import { PipelineEngineService } from './pipeline-engine.service';
+import { PipelineEventBus } from './pipeline-events.service';
 import { PipelineGateway } from './pipeline.gateway';
 import { PipelineQueue } from './queue/pipeline.queue';
 import { PipelineWorker } from './queue/pipeline.worker';
@@ -14,6 +15,7 @@ import { PipelineWorker } from './queue/pipeline.worker';
     AssetMaterializerService,
     OrchestratorService,
     PipelineGateway,
+    PipelineEventBus,
     PipelineQueue,
     PipelineWorker,
   ],

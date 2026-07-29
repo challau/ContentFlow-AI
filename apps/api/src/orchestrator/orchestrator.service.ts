@@ -13,7 +13,7 @@ import { LlmService } from '../ai/providers/llm.service';
 import type { BrandContext } from '../ai/agents/agent.types';
 import { AssetMaterializerService } from './asset-materializer.service';
 import { PipelineEngineService } from './pipeline-engine.service';
-import { PipelineGateway } from './pipeline.gateway';
+import { PipelineEventBus } from './pipeline-events.service';
 import { buildGraph, validateGraph, type AgentGraph } from './dag';
 
 export interface StartRunArgs {
@@ -33,7 +33,7 @@ export class OrchestratorService {
     private readonly prisma: PrismaService,
     private readonly engine: PipelineEngineService,
     private readonly materializer: AssetMaterializerService,
-    private readonly gateway: PipelineGateway,
+    private readonly events: PipelineEventBus,
     private readonly llm: LlmService,
     private readonly config: ConfigService<Env, true>,
   ) {}
@@ -133,7 +133,7 @@ export class OrchestratorService {
       data: { status: 'RUNNING', startedAt, progress: 0 },
     });
 
-    this.gateway.emit(runId, {
+    this.events.publish(runId, {
       type: 'run.started',
       runId,
       pipelineId: run.pipelineId,
@@ -155,7 +155,7 @@ export class OrchestratorService {
               startedAt: new Date(),
               attempt: { increment: 1 },
             });
-            this.gateway.emit(runId, {
+            this.events.publish(runId, {
               type: 'agent.status',
               runId,
               executionId: exec.id,
@@ -179,7 +179,7 @@ export class OrchestratorService {
               provider: r.provider,
               error: null,
             });
-            this.gateway.emit(runId, {
+            this.events.publish(runId, {
               type: 'agent.status',
               runId,
               executionId: exec.id,
@@ -198,7 +198,7 @@ export class OrchestratorService {
               finishedAt: new Date(),
               error: error.message.slice(0, 4000),
             });
-            this.gateway.emit(runId, {
+            this.events.publish(runId, {
               type: 'agent.status',
               runId,
               executionId: exec.id,
@@ -215,7 +215,7 @@ export class OrchestratorService {
               finishedAt: new Date(),
               error: reason,
             });
-            this.gateway.emit(runId, {
+            this.events.publish(runId, {
               type: 'agent.status',
               runId,
               executionId: exec.id,
@@ -232,7 +232,7 @@ export class OrchestratorService {
               where: { id: runId },
               data: { progress: percent },
             });
-            this.gateway.emit(runId, {
+            this.events.publish(runId, {
               type: 'run.progress',
               runId,
               completed,
@@ -282,7 +282,7 @@ export class OrchestratorService {
 
       await this.notify(run.triggeredById, runId, status, run.project.name);
 
-      this.gateway.emit(runId, {
+      this.events.publish(runId, {
         type: 'run.finished',
         runId,
         status,
@@ -305,7 +305,7 @@ export class OrchestratorService {
         },
       });
 
-      this.gateway.emit(runId, {
+      this.events.publish(runId, {
         type: 'run.finished',
         runId,
         status: signal?.aborted ? 'CANCELLED' : 'FAILED',

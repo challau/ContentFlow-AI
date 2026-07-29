@@ -1,9 +1,12 @@
 import { apiFetch } from './client';
+import { normalizeDashboard } from './normalize';
 import type { DashboardStats, Notification, BrandKit, Template, Campaign } from './types';
 
-export const getDashboard    = () => apiFetch<DashboardStats>('/dashboard');
+export const getDashboard = async (): Promise<DashboardStats> =>
+  normalizeDashboard(await apiFetch<Record<string, unknown>>('/dashboard'));
 export const getAnalytics    = () => apiFetch<unknown>('/dashboard/analytics');
-export const getCredits      = () => apiFetch<{ credits: number }>('/dashboard/credits');
+export const getCredits      = () =>
+  apiFetch<{ balance: number; transactions: unknown[] }>('/dashboard/credits');
 
 export const getNotifications = () => apiFetch<Notification[]>('/notifications');
 export const markRead         = (id: string) => apiFetch<void>(`/notifications/${id}/read`, { method: 'POST' });

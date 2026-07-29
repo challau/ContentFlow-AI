@@ -52,7 +52,8 @@ services:
       LLM_PROVIDER: ${LLM_PROVIDER:-local}
       LLM_MODEL: ${LLM_MODEL:-claude-opus-5}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
-      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000}
+      # Same-origin in the default topology; override when the SPA is hosted elsewhere.
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:8080}
       # The API process serves HTTP only; runs are consumed by the worker.
       WORKER_ENABLED: 'false'
     ports:
@@ -83,12 +84,23 @@ services:
       PIPELINE_CONCURRENCY: ${PIPELINE_CONCURRENCY:-4}
     command: ['node', 'apps/api/dist/worker.js']
 
+  # Serves the SPA and fronts the API — this is the entrypoint users hit.
+  web:
+    build:
+      context: .
+      dockerfile: infra/docker/web.Dockerfile
+    restart: unless-stopped
+    depends_on: [api]
+    ports:
+      - '8080:80'
+
+  # API-only edge (rate limiting, TLS termination) for non-browser clients.
   nginx:
     image: nginx:1.27-alpine
     restart: unless-stopped
     depends_on: [api]
     ports:
-      - '8080:80'
+      - '8081:80'
     volumes:
       - ./infra/nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
 

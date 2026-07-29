@@ -5,6 +5,12 @@ import { useToast } from '../../context/ToastContext';
 import { getProjects, createProject, deleteProject } from '../../api/projects';
 import type { Project } from '../../api/types';
 
+/** Mirrors the API's PLATFORMS enum; the most commonly used ones first. */
+const PLATFORM_OPTIONS = [
+  'LINKEDIN', 'INSTAGRAM', 'X', 'YOUTUBE', 'TIKTOK',
+  'FACEBOOK', 'BLOG', 'EMAIL', 'NEWSLETTER', 'REDDIT',
+];
+
 function ProjectCard({ project, onDelete }: { project: Project; onDelete: () => void }) {
   const { toast } = useToast();
   const [deleting, setDeleting] = useState(false);
@@ -59,14 +65,27 @@ function ProjectCard({ project, onDelete }: { project: Project; onDelete: () => 
 function CreateProjectModal({ onClose, onCreated }: { onClose: () => void; onCreated: () => void }) {
   const { toast }  = useToast();
   const [name, setName]       = useState('');
+  const [topic, setTopic]     = useState('');
+  const [audience, setAudience] = useState('');
+  const [platforms, setPlatforms] = useState<string[]>(['LINKEDIN', 'INSTAGRAM', 'X']);
   const [desc, setDesc]       = useState('');
   const [loading, setLoading] = useState(false);
+
+  function togglePlatform(p: string) {
+    setPlatforms(prev => (prev.includes(p) ? prev.filter(x => x !== p) : [...prev, p]));
+  }
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
     try {
-      await createProject({ name, description: desc });
+      await createProject({
+        name,
+        topic,
+        description: desc || undefined,
+        audience: audience || undefined,
+        targetPlatforms: platforms,
+      });
       toast('Project created!', 'success');
       onCreated();
       onClose();
@@ -89,6 +108,32 @@ function CreateProjectModal({ onClose, onCreated }: { onClose: () => void; onCre
             <div className="form-group">
               <label className="form-label">Project Name *</label>
               <input className="form-input" value={name} onChange={e=>setName(e.target.value)} placeholder="My Content Project" required />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Topic *</label>
+              <input className="form-input" value={topic} onChange={e=>setTopic(e.target.value)}
+                placeholder="A solar-powered irrigation controller for smallholder farms"
+                minLength={3} maxLength={500} required />
+              <div style={{ fontSize:'var(--text-xs)', color:'var(--text-muted)', marginTop:'var(--space-2)' }}>
+                The brief every agent works from.
+              </div>
+            </div>
+            <div className="form-group">
+              <label className="form-label">Audience</label>
+              <input className="form-input" value={audience} onChange={e=>setAudience(e.target.value)}
+                placeholder="smallholder farmers in semi-arid regions" maxLength={500} />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Target Platforms</label>
+              <div style={{ display:'flex', flexWrap:'wrap', gap:'var(--space-2)' }}>
+                {PLATFORM_OPTIONS.map(p => (
+                  <button key={p} type="button" onClick={()=>togglePlatform(p)}
+                    className={`badge ${platforms.includes(p) ? 'badge-primary' : 'badge-muted'}`}
+                    style={{ cursor:'pointer', border:'none' }}>
+                    {p}
+                  </button>
+                ))}
+              </div>
             </div>
             <div className="form-group">
               <label className="form-label">Description</label>

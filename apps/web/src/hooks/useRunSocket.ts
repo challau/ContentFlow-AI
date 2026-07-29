@@ -1,14 +1,27 @@
 import { useEffect, useRef, useCallback } from 'react';
 import { io, type Socket } from 'socket.io-client';
-import type { AgentExecution } from '../api/types';
+import { toExecStatus, toRunStatus } from '../api/normalize';
+import type { AgentExecution, Run } from '../api/types';
 
 export interface RunEvent {
   runId: string;
   agent?: string;
-  status?: string;
   execution?: AgentExecution;
-  runStatus?: string;
+  runStatus?: Run['status'];
+  progress?: number;
 }
+
+/** Event names emitted by the API's /pipeline gateway (see PipelineEvent). */
+interface AgentStatusPayload {
+  runId: string;
+  agent: string;
+  status: string;
+  durationMs?: number;
+  error?: string;
+  at?: string;
+}
+interface RunProgressPayload { runId: string; percent: number }
+interface RunFinishedPayload { runId: string; status: string }
 
 export function useRunSocket(
   runId: string | null,
@@ -28,8 +41,32 @@ export function useRunSocket(
     });
 
     sock.on('connect', () => sock.emit('run:subscribe', { runId }));
-    sock.on('run:event', (e: RunEvent) => cbRef.current(e));
-    sock.on('run:done',  (e: RunEvent) => cbRef.current(e));
+
+    sock.on('agent.status', (e: AgentStatusPayload) =>
+      cbRef.current({
+        runId: e.runId,
+        agent: e.agent,
+        execution: {
+          agentName: e.agent,
+          status: toExecStatus(e.status),
+          durationMs: e.durationMs,
+          error: e.error,
+          finishedAt: e.at,
+        },
+      }),
+    );
+
+    sock.on('run.progress', (e: RunProgressPayload) =>
+      cbRef.current({ runId: e.runId, progress: e.percent }),
+    );
+
+    sock.on('run.finished', (e: RunFinishedPayload) =>
+      cbRef.current({ runId: e.runId, runStatus: toRunStatus(e.status) }),
+    );
+
+    sock.on('run.started', (e: { runId: string }) =>
+      cbRef.current({ runId: e.runId, runStatus: 'running' }),
+    );
 
     socketRef.current = sock;
     return () => { sock.disconnect(); };

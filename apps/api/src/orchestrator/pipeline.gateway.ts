@@ -57,7 +57,12 @@ export class PipelineGateway implements OnGatewayConnection, OnGatewayDisconnect
     return { ok: true };
   }
 
-  emit(runId: string, event: PipelineEvent): void {
+  /**
+   * Emits to clients connected to *this* process only. Producers should go
+   * through PipelineEventBus instead, so events also reach clients held by
+   * other API processes.
+   */
+  emitLocal(runId: string, event: PipelineEvent): void {
     // The gateway is optional in worker/CLI contexts, so guard the server ref.
     this.server?.to(PIPELINE_ROOM(runId)).emit(event.type, event);
   }

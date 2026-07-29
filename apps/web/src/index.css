@@ -295,6 +295,9 @@ textarea.form-input { min-height: 100px; resize: vertical; }
   max-width: 520px;
   box-shadow: var(--shadow-lg);
   animation: modal-in 200ms ease;
+  /* Taller forms must stay reachable on short viewports. */
+  max-height: calc(100vh - var(--space-8));
+  overflow-y: auto;
 }
 @keyframes modal-in {
   from { opacity: 0; transform: scale(0.95) translateY(8px); }
