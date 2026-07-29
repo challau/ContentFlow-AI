@@ -40,10 +40,7 @@ export class PipelineEventBus implements OnModuleInit, OnModuleDestroy {
     }
   }
 
-  async onModuleInit(): Promise<void> {
-    // Worker processes have no socket server, so their emits are no-ops; the
-    // subscription is still cheap and keeps this service topology-agnostic.
-    await this.subscriber.subscribe(PIPELINE_EVENT_CHANNEL);
+  onModuleInit(): void {
     this.subscriber.on('message', (_channel, raw) => {
       try {
         const { runId, event } = JSON.parse(raw) as EventEnvelope;
@@ -53,7 +50,20 @@ export class PipelineEventBus implements OnModuleInit, OnModuleDestroy {
         this.logger.warn(`Discarded malformed pipeline event: ${message}`);
       }
     });
-    this.logger.log(`Subscribed to "${PIPELINE_EVENT_CHANNEL}"`);
+
+    // Deliberately not awaited. redisOptions sets maxRetriesPerRequest: null
+    // for BullMQ, which makes commands queue forever rather than fail — so
+    // awaiting this would hang boot indefinitely whenever Redis is down.
+    // Live progress degrades until Redis returns; HTTP must keep serving.
+    // Worker processes have no socket server, so their emits are no-ops; the
+    // subscription is still cheap and keeps this service topology-agnostic.
+    this.subscriber
+      .subscribe(PIPELINE_EVENT_CHANNEL)
+      .then(() => this.logger.log(`Subscribed to "${PIPELINE_EVENT_CHANNEL}"`))
+      .catch((error: unknown) => {
+        const message = error instanceof Error ? error.message : String(error);
+        this.logger.warn(`Pipeline event subscription pending: ${message}`);
+      });
   }
 
   /**
