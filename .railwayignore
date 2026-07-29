@@ -1,0 +1,4 @@
+.redisdata/
+node_modules/
+.git/
+dist/
