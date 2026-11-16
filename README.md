@@ -143,17 +143,6 @@ Copy `.env.example` in `apps/api/`:
 ```bash
 cp apps/api/.env.example apps/api/.env
 ```
-Key settings in `apps/api/.env`:
-```env
-PORT=4000
-DATABASE_URL=postgresql://challaudaykumar@localhost:5432/contentflow?schema=public
-REDIS_HOST=127.0.0.1
-REDIS_PORT=6379
-JWT_ACCESS_SECRET=fe1c19fc2570a6368033168c80d264dd721e6847b139ca7027753639bdb89b0c
-JWT_REFRESH_SECRET=018cb232d8ab4d8af20809d57bd677fcbf013c88dd48591f906ef92d2cd1a9c8
-WEB_APP_URL=http://localhost:5173
-LLM_PROVIDER=local
-```
 
 ### 3. Setup Database & Seed Data
 ```bash
